@@ -138,19 +138,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
 
   const handleMouseUp = () => setIsPanning(false);
 
-  // Zoom handlers
+  // Zoom handlers - slower zoom speed, sensible limits
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (isFormOpen) return;
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.92 : 1.08;
+    const delta = e.deltaY > 0 ? 0.97 : 1.03; // Slower zoom
     setTransform(prev => ({
       ...prev,
-      scale: Math.max(0.25, Math.min(2.5, prev.scale * delta)),
+      scale: Math.max(0.5, Math.min(2, prev.scale * delta)), // Min 50%, Max 200%
     }));
   }, [isFormOpen]);
 
-  const zoomIn = () => setTransform(prev => ({ ...prev, scale: Math.min(2.5, prev.scale * 1.2) }));
-  const zoomOut = () => setTransform(prev => ({ ...prev, scale: Math.max(0.25, prev.scale / 1.2) }));
+  const zoomIn = () => setTransform(prev => ({ ...prev, scale: Math.min(2, prev.scale * 1.15) }));
+  const zoomOut = () => setTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale / 1.15) }));
   const resetView = () => {
     const scale = Math.min(0.9, (window.innerWidth - 100) / CANVAS_WIDTH, (window.innerHeight - 100) / CANVAS_HEIGHT);
     const x = (window.innerWidth - CANVAS_WIDTH * scale) / 2;
