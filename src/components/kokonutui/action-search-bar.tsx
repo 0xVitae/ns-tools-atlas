@@ -134,7 +134,11 @@ function ActionSearchBar({
                 case "Enter":
                     e.preventDefault();
                     if (activeIndex >= 0 && result.actions[activeIndex]) {
-                        setSelectedAction(result.actions[activeIndex]);
+                        const action = result.actions[activeIndex];
+                        setSelectedAction(action);
+                        onSelect?.(action);
+                        setIsFocused(false);
+                        setQuery("");
                     }
                     break;
                 case "Escape":
@@ -143,7 +147,7 @@ function ActionSearchBar({
                     break;
             }
         },
-        [result?.actions, activeIndex]
+        [result?.actions, activeIndex, onSelect]
     );
 
     const handleActionClick = useCallback((action: Action) => {

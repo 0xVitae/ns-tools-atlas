@@ -18,7 +18,6 @@ import ActionSearchBar, {
   Action,
 } from "@/components/kokonutui/action-search-bar";
 import { AddProjectForm } from "./AddProjectForm";
-import { forceSimulation, forceCollide, SimulationNodeDatum } from "d3-force";
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
@@ -245,79 +244,91 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return x - Math.floor(x);
   };
 
-  // Calculate all item positions for a category using d3-force with collision detection
-  interface ForceNode extends SimulationNodeDatum {
-    id: string;
-    x: number;
-    y: number;
-    radius: number;
-  }
-
+  // Calculate all item positions for a category using Poisson Disk Sampling
   const calculateCategoryPositions = (
     categoryProjects: EcosystemProject[],
     boxWidth: number,
     boxHeight: number,
     baseSize: number
   ): Record<string, { x: number; y: number }> => {
-    if (categoryProjects.length === 0) {
-      return {};
-    }
+    if (categoryProjects.length === 0) return {};
 
-    // Calculate collision radius for full item bounding box (icon + label underneath)
-    // Label is wider than icon, and sits below it
-    const itemWidth = baseSize + 30; // icon width + label extends beyond
-    const itemHeight = baseSize * 0.72 + 28; // icon height + label text + gap
-    // Use larger radius to create more spacing between items
-    const collisionRadius = Math.max(itemWidth, itemHeight) / 2 + 12;
+    // Calculate minimum distance between item centers (based on bounding box)
+    const itemWidth = baseSize + 30;
+    const itemHeight = baseSize * 0.72 + 28;
+    const minDistance = Math.max(itemWidth, itemHeight) + 8;
 
-    // Define usable area within the box
+    // Usable area bounds
     const padding = 24;
     const topPadding = 45;
-    const minX = padding + collisionRadius;
-    const maxX = boxWidth - padding - collisionRadius;
-    const minY = topPadding + collisionRadius;
-    const maxY = boxHeight - padding - collisionRadius;
+    const minX = padding + itemWidth / 2;
+    const maxX = boxWidth - padding - itemWidth / 2;
+    const minY = topPadding + itemHeight / 2;
+    const maxY = boxHeight - padding - itemHeight / 2;
 
-    // Create nodes with initial random positions based on project ID
-    const nodes: ForceNode[] = categoryProjects.map((project) => {
-      const hash = hashString(project.id);
-      const randX = seededRandom(hash);
-      const randY = seededRandom(hash + 1000);
-      return {
-        id: project.id,
-        x: minX + randX * Math.max(1, maxX - minX),
-        y: minY + randY * Math.max(1, maxY - minY),
-        radius: collisionRadius,
-      };
-    });
-
-    // Create and run force simulation with strong collision to prevent overlap
-    const simulation = forceSimulation<ForceNode>(nodes)
-      .force(
-        "collide",
-        forceCollide<ForceNode>((d) => d.radius)
-          .strength(0.8)
-          .iterations(5)
-      )
-      .velocityDecay(0.4)
-      .stop();
-
-    // Run enough iterations to resolve overlaps while keeping some randomness
-    for (let i = 0; i < 120; i++) {
-      simulation.tick();
-
-      // Constrain nodes to box bounds after each tick
-      nodes.forEach((node) => {
-        node.x = Math.max(minX, Math.min(maxX, node.x!));
-        node.y = Math.max(minY, Math.min(maxY, node.y!));
-      });
-    }
-
-    // Convert to position record
     const positions: Record<string, { x: number; y: number }> = {};
-    nodes.forEach((node) => {
-      positions[node.id] = { x: node.x!, y: node.y! };
-    });
+    const placedPoints: { x: number; y: number }[] = [];
+
+    // Place each project using rejection sampling
+    for (const project of categoryProjects) {
+      const baseSeed = hashString(project.id);
+      let placed = false;
+
+      // Try many random positions
+      for (let attempt = 0; attempt < 100 && !placed; attempt++) {
+        const randX = seededRandom(baseSeed + attempt * 2);
+        const randY = seededRandom(baseSeed + attempt * 2 + 1);
+        const x = minX + randX * Math.max(1, maxX - minX);
+        const y = minY + randY * Math.max(1, maxY - minY);
+
+        // Check distance from all placed points
+        let valid = true;
+        for (const pt of placedPoints) {
+          const dx = x - pt.x;
+          const dy = y - pt.y;
+          if (Math.sqrt(dx * dx + dy * dy) < minDistance) {
+            valid = false;
+            break;
+          }
+        }
+
+        if (valid) {
+          positions[project.id] = { x, y };
+          placedPoints.push({ x, y });
+          placed = true;
+        }
+      }
+
+      // Fallback: find position with maximum distance from existing
+      if (!placed) {
+        let bestX = (minX + maxX) / 2;
+        let bestY = (minY + maxY) / 2;
+        let bestMinDist = 0;
+
+        for (let i = 0; i < 50; i++) {
+          const randX = seededRandom(baseSeed + 200 + i * 2);
+          const randY = seededRandom(baseSeed + 200 + i * 2 + 1);
+          const x = minX + randX * Math.max(1, maxX - minX);
+          const y = minY + randY * Math.max(1, maxY - minY);
+
+          let minDist = Infinity;
+          for (const pt of placedPoints) {
+            const dx = x - pt.x;
+            const dy = y - pt.y;
+            minDist = Math.min(minDist, Math.sqrt(dx * dx + dy * dy));
+          }
+
+          if (minDist > bestMinDist) {
+            bestMinDist = minDist;
+            bestX = x;
+            bestY = y;
+          }
+        }
+
+        positions[project.id] = { x: bestX, y: bestY };
+        placedPoints.push({ x: bestX, y: bestY });
+      }
+    }
 
     return positions;
   };
