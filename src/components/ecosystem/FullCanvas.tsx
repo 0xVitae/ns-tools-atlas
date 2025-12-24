@@ -26,10 +26,10 @@ interface FullCanvasProps {
 const PADDING = 40;
 const GAP = 24;
 const TITLE_HEIGHT = 90;
-const MIN_BOX_WIDTH = 220;
-const MIN_BOX_HEIGHT = 140;
-const CELL_WIDTH = 85; // Width per item cell (accounts for label)
-const CELL_HEIGHT = 70; // Height per item cell (icon + label)
+const MIN_BOX_WIDTH = 240;
+const MIN_BOX_HEIGHT = 160;
+const CELL_WIDTH = 100; // Width per item cell (matches collision diameter)
+const CELL_HEIGHT = 90; // Height per item cell (icon + label + spacing)
 const ITEMS_PER_ROW_BASE = 4; // Base items per row for width calculation
 
 // Calculate box dimensions based on project count
@@ -233,15 +233,16 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       return {};
     }
 
-    // Calculate collision radius based on full item dimensions (icon + label)
-    const itemWidth = baseSize + 24;
-    const itemHeight = baseSize * 0.72 + 22;
-    // Use max dimension to ensure no overlap since items are rectangular
-    const collisionRadius = Math.max(itemWidth, itemHeight) / 2 + 6;
+    // Calculate collision radius for full item bounding box (icon + label underneath)
+    // Label is wider than icon, and sits below it
+    const itemWidth = baseSize + 30; // icon width + label extends beyond
+    const itemHeight = baseSize * 0.72 + 28; // icon height + label text + gap
+    // Use larger radius to create more spacing between items
+    const collisionRadius = Math.max(itemWidth, itemHeight) / 2 + 12;
 
     // Define usable area within the box
-    const padding = 20;
-    const topPadding = 42;
+    const padding = 24;
+    const topPadding = 45;
     const minX = padding + collisionRadius;
     const maxX = boxWidth - padding - collisionRadius;
     const minY = topPadding + collisionRadius;
@@ -260,19 +261,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       };
     });
 
-    // Create and run force simulation - weaker collision keeps more randomness
+    // Create and run force simulation with strong collision to prevent overlap
     const simulation = forceSimulation<ForceNode>(nodes)
       .force(
         "collide",
         forceCollide<ForceNode>((d) => d.radius)
-          .strength(0.4)
-          .iterations(3)
+          .strength(0.8)
+          .iterations(5)
       )
-      .velocityDecay(0.6)
+      .velocityDecay(0.4)
       .stop();
 
-    // Run just enough iterations to resolve major overlaps
-    for (let i = 0; i < 40; i++) {
+    // Run enough iterations to resolve overlaps while keeping some randomness
+    for (let i = 0; i < 120; i++) {
       simulation.tick();
 
       // Constrain nodes to box bounds after each tick
