@@ -7,14 +7,18 @@ import React, {
 } from "react";
 import { EcosystemProject, CategoryType } from "@/types/ecosystem";
 import { CATEGORIES, CATEGORY_COLORS } from "@/data/ecosystemData";
-import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AddProjectForm } from "./AddProjectForm";
 import {
-  forceSimulation,
-  forceCollide,
-  SimulationNodeDatum,
-} from "d3-force";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import ActionSearchBar, {
+  Action,
+} from "@/components/kokonutui/action-search-bar";
+import { AddProjectForm } from "./AddProjectForm";
+import { forceSimulation, forceCollide, SimulationNodeDatum } from "d3-force";
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
@@ -127,6 +131,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   // Only use state for UI that needs re-renders
   const [displayScale, setDisplayScale] = useState(100);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
   // Group projects by category
   const projectsByCategory = useMemo(() => {
@@ -135,6 +140,31 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       acc[project.category].push(project);
       return acc;
     }, {} as Record<string, EcosystemProject[]>);
+  }, [projects]);
+
+  // Convert projects to search actions
+  const searchActions: Action[] = useMemo(() => {
+    return projects.map((project) => {
+      const category = CATEGORIES.find((c) => c.id === project.category);
+      return {
+        id: project.id,
+        label: project.name,
+        icon: project.emoji ? (
+          <span className="text-base">{project.emoji}</span>
+        ) : (
+          <div
+            className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+            style={{
+              backgroundColor: `${CATEGORY_COLORS[project.category]}20`,
+              color: CATEGORY_COLORS[project.category],
+            }}
+          >
+            {project.name.slice(0, 2).toUpperCase()}
+          </div>
+        ),
+        end: category?.name || project.category,
+      };
+    });
   }, [projects]);
 
   // Calculate dynamic layout based on projects
@@ -313,6 +343,43 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return allPositions;
   }, [dynamicLayout, projectsByCategory]);
 
+  // Handle search selection - pan to the selected project
+  const handleSearchSelect = useCallback(
+    (action: Action) => {
+      const project = projects.find((p) => p.id === action.id);
+      if (!project) return;
+
+      const boxLayout = dynamicLayout[project.category];
+      const pos = categoryPositions[project.category]?.[project.id];
+      if (!boxLayout || !pos) return;
+
+      // Calculate the absolute position of the project on the canvas
+      const projectX = boxLayout.x + pos.x;
+      const projectY = boxLayout.y + pos.y;
+
+      // Pan to center the project on screen
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const scale = transformRef.current.scale;
+
+      transformRef.current.x = rect.width / 2 - projectX * scale;
+      transformRef.current.y = rect.height / 2 - projectY * scale;
+      applyTransform();
+
+      // Set the selected item to highlight it and grey out others
+      setSelectedItem(project.id);
+      setHoveredItem(project.id);
+    },
+    [projects, dynamicLayout, categoryPositions, applyTransform]
+  );
+
+  // Clear selection when clicking on canvas background
+  const clearSelection = useCallback(() => {
+    setSelectedItem(null);
+  }, []);
+
   // Pan handlers - use refs and requestAnimationFrame for smooth performance
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -432,7 +499,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     <div className="fixed inset-0 bg-white overflow-hidden">
       {/* Top Bar */}
       <div className="absolute top-4 left-4 z-30">
-        <div className="bg-white rounded-xl px-6 py-3 shadow-lg border border-foreground/10 flex items-center gap-6">
+        <div className="bg-white rounded-xl px-5 py-3 shadow-lg border border-foreground/10 flex items-center gap-4">
           <div className="flex items-center gap-2">
             <svg
               width="30"
@@ -459,36 +526,46 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
           <div className="h-6 w-px bg-border" />
 
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={zoomOut}
-            >
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-xs text-muted-foreground w-10 text-center">
-              {displayScale}%
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={zoomIn}
-            >
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={resetView}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          {/* Search Bar */}
+          <ActionSearchBar
+            actions={searchActions}
+            placeholder="Find Projects"
+            onSelect={handleSearchSelect}
+          />
+        </div>
+      </div>
+
+      {/* Zoom Controls - Stacked below top bar */}
+      <div className="absolute top-20 left-4 z-30">
+        <div className="bg-white rounded-lg shadow-lg border border-foreground/10 flex flex-col items-center p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={zoomIn}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <span className="text-[10px] text-muted-foreground py-1">
+            {displayScale}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={zoomOut}
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <div className="h-px w-6 bg-border my-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={resetView}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -508,6 +585,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={clearSelection}
       >
         <div
           ref={canvasRef}
@@ -532,9 +610,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                 fill="currentColor"
               />
             </svg>
-            <h2 className="text-2xl font-bold text-foreground">
+            <h1
+              className="text-2xl font-bold text-foreground"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
               NS Tools Atlas
-            </h2>
+            </h1>
           </div>
 
           {/* Category Boxes - Dynamic Layout */}
@@ -572,56 +653,158 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                   };
                   const colors = getCategoryProjectColors(categoryId);
                   const isHovered = hoveredItem === project.id;
+                  const isSelected = selectedItem === project.id;
+                  const isGreyedOut = selectedItem !== null && !isSelected;
                   const baseSize = Math.min(
                     55,
                     Math.max(38, boxLayout.width / 5.5)
                   );
+                  // Expand size when selected
+                  const displaySize = isSelected ? baseSize * 1.3 : baseSize;
 
                   return (
-                    <div
+                    <HoverCard
                       key={project.id}
-                      className="absolute flex flex-col items-center transition-all duration-150 select-none"
-                      style={{
-                        left: pos.x,
-                        top: pos.y,
-                        transform: `translate(-50%, -50%) ${
-                          isHovered ? "scale(1.12)" : "scale(1)"
-                        }`,
-                        zIndex: isHovered ? 10 : 1,
-                      }}
-                      onMouseEnter={() => setHoveredItem(project.id)}
-                      onMouseLeave={() => setHoveredItem(null)}
+                      openDelay={100}
+                      closeDelay={100}
+                      open={isSelected ? true : undefined}
                     >
-                      <div
-                        className="rounded-lg flex items-center justify-center font-bold cursor-pointer transition-shadow"
-                        style={{
-                          width: baseSize,
-                          height: baseSize * 0.72,
-                          backgroundColor: colors.bg,
-                          color: colors.text,
-                          border: `2px solid ${colors.border}`,
-                          fontSize: project.emoji
-                            ? baseSize * 0.4
-                            : baseSize * 0.28,
-                          boxShadow: isHovered
-                            ? "0 6px 16px rgba(0,0,0,0.12)"
-                            : "none",
-                        }}
+                      <HoverCardTrigger asChild>
+                        <div
+                          className="absolute flex flex-col items-center transition-all duration-300 select-none cursor-pointer"
+                          style={{
+                            left: pos.x,
+                            top: pos.y,
+                            transform: `translate(-50%, -50%) ${
+                              isSelected
+                                ? "scale(1.25)"
+                                : isHovered
+                                ? "scale(1.12)"
+                                : "scale(1)"
+                            }`,
+                            zIndex: isSelected ? 20 : isHovered ? 10 : 1,
+                            opacity: isGreyedOut ? 0.3 : 1,
+                            filter: isGreyedOut ? "grayscale(100%)" : "none",
+                          }}
+                          onMouseEnter={() => setHoveredItem(project.id)}
+                          onMouseLeave={() => setHoveredItem(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isSelected) {
+                              setSelectedItem(null);
+                            } else {
+                              setSelectedItem(project.id);
+                            }
+                          }}
+                        >
+                          <div
+                            className="rounded-lg flex items-center justify-center font-bold cursor-pointer transition-all duration-300"
+                            style={{
+                              width: displaySize,
+                              height: displaySize * 0.72,
+                              backgroundColor: colors.bg,
+                              color: colors.text,
+                              border: `2px solid ${
+                                isSelected ? colors.text : colors.border
+                              }`,
+                              fontSize: project.emoji
+                                ? displaySize * 0.4
+                                : displaySize * 0.28,
+                              boxShadow: isSelected
+                                ? "0 8px 24px rgba(0,0,0,0.2)"
+                                : isHovered
+                                ? "0 6px 16px rgba(0,0,0,0.12)"
+                                : "none",
+                            }}
+                          >
+                            {project.emoji || getInitials(project.name)}
+                          </div>
+                          <div
+                            className="mt-1 text-center leading-tight truncate transition-all duration-300"
+                            style={{
+                              fontSize: Math.max(9, displaySize * 0.18),
+                              maxWidth: displaySize + 20,
+                              color: isSelected
+                                ? colors.text
+                                : isHovered
+                                ? colors.text
+                                : "#333",
+                              fontWeight: isSelected || isHovered ? 600 : 400,
+                            }}
+                          >
+                            {project.name}
+                          </div>
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent
+                        className="w-72 z-50"
+                        side="top"
+                        sideOffset={12}
                       >
-                        {project.emoji || getInitials(project.name)}
-                      </div>
-                      <div
-                        className="mt-1 text-center leading-tight truncate"
-                        style={{
-                          fontSize: Math.max(9, baseSize * 0.18),
-                          maxWidth: baseSize + 20,
-                          color: isHovered ? colors.text : "#333",
-                          fontWeight: isHovered ? 600 : 400,
-                        }}
-                      >
-                        {project.name}
-                      </div>
-                    </div>
+                        <div className="flex flex-col gap-3">
+                          {/* Header with emoji/initials and name */}
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="rounded-lg flex items-center justify-center font-bold shrink-0"
+                              style={{
+                                width: 40,
+                                height: 32,
+                                backgroundColor: colors.bg,
+                                color: colors.text,
+                                border: `2px solid ${colors.border}`,
+                                fontSize: project.emoji ? 18 : 12,
+                              }}
+                            >
+                              {project.emoji || getInitials(project.name)}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-sm truncate">
+                                {project.name}
+                              </span>
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded w-fit"
+                                style={{
+                                  backgroundColor: colors.bg,
+                                  color: colors.text,
+                                }}
+                              >
+                                {category?.name || categoryId}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          {project.description && (
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {project.description}
+                            </p>
+                          )}
+
+                          {/* Website link */}
+                          {project.url && (
+                            <a
+                              href={project.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-sm text-primary hover:underline w-fit"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Visit website
+                            </a>
+                          )}
+
+                          {/* Image if available */}
+                          {project.imageUrl && (
+                            <img
+                              src={project.imageUrl}
+                              alt={project.name}
+                              className="w-full h-24 object-contain rounded border bg-muted/30"
+                            />
+                          )}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   );
                 })}
               </div>
