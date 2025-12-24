@@ -1,97 +1,196 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { EcosystemProject, CategoryType } from '@/types/ecosystem';
-import { CATEGORIES, CATEGORY_COLORS } from '@/data/ecosystemData';
-import { ZoomIn, ZoomOut, RotateCcw, Plus, Upload, ImageIcon, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { toast } from 'sonner';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+import { EcosystemProject, CategoryType } from "@/types/ecosystem";
+import { CATEGORIES, CATEGORY_COLORS } from "@/data/ecosystemData";
+import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddProjectForm } from "./AddProjectForm";
+import {
+  forceSimulation,
+  forceCollide,
+  SimulationNodeDatum,
+} from "d3-force";
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
-  onAddProject: (project: Omit<EcosystemProject, 'id'>) => void;
+  onAddProject: (project: Omit<EcosystemProject, "id">) => void;
+  isSubmitting?: boolean;
 }
 
-// Canvas dimensions
-const CANVAS_WIDTH = 960;
-const CANVAS_HEIGHT = 950;
+// Layout constants
+const PADDING = 40;
+const GAP = 24;
+const TITLE_HEIGHT = 90;
+const MIN_BOX_WIDTH = 220;
+const MIN_BOX_HEIGHT = 140;
+const CELL_WIDTH = 85; // Width per item cell (accounts for label)
+const CELL_HEIGHT = 70; // Height per item cell (icon + label)
+const ITEMS_PER_ROW_BASE = 4; // Base items per row for width calculation
 
-// Canvas layout - position boxes like the reference image
-const CANVAS_LAYOUT: Record<CategoryType, { x: number; y: number; width: number; height: number }> = {
-  'networks': { x: 40, y: 80, width: 240, height: 200 },
-  'coworking': { x: 40, y: 300, width: 240, height: 180 },
-  'media-events': { x: 40, y: 500, width: 240, height: 280 },
-  'education': { x: 40, y: 800, width: 240, height: 220 },
-  'local-vcs': { x: 310, y: 80, width: 300, height: 460 },
-  'corporate': { x: 310, y: 560, width: 300, height: 180 },
-  'public-entities': { x: 310, y: 760, width: 300, height: 110 },
-  'global-vcs': { x: 640, y: 80, width: 280, height: 360 },
-  'accelerators': { x: 640, y: 460, width: 280, height: 410 },
+// Calculate box dimensions based on project count
+const calculateBoxSize = (projectCount: number) => {
+  const count = Math.max(1, projectCount);
+  const cols = Math.min(count, ITEMS_PER_ROW_BASE);
+  const rows = Math.ceil(count / ITEMS_PER_ROW_BASE);
+
+  const width = Math.max(MIN_BOX_WIDTH, cols * CELL_WIDTH + 40);
+  const height = Math.max(MIN_BOX_HEIGHT, rows * CELL_HEIGHT + 50);
+
+  return { width, height };
 };
 
-const CATEGORY_OPTIONS: { value: CategoryType; label: string }[] = [
-  { value: 'networks', label: 'Networks' },
-  { value: 'coworking', label: 'Coworking' },
-  { value: 'media-events', label: 'Media & Events' },
-  { value: 'education', label: 'Education' },
-  { value: 'local-vcs', label: 'Local VCs' },
-  { value: 'global-vcs', label: 'Global VCs' },
-  { value: 'accelerators', label: 'Accelerators' },
-  { value: 'corporate', label: 'Corporate' },
-  { value: 'public-entities', label: 'Public Entities' },
-];
+// Simple column-based layout algorithm
+const calculateLayout = (
+  categories: { id: CategoryType; name: string }[],
+  projectsByCategory: Record<string, EcosystemProject[]>
+) => {
+  const layout: Record<
+    string,
+    { x: number; y: number; width: number; height: number }
+  > = {};
 
-export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }) => {
+  // Get all categories that have projects or are in CATEGORIES
+  const allCategoryIds = new Set([
+    ...categories.map((c) => c.id),
+    ...Object.keys(projectsByCategory),
+  ]);
+
+  // Calculate sizes for each category
+  const categoryData = Array.from(allCategoryIds).map((id) => {
+    const count = projectsByCategory[id]?.length || 0;
+    const size = calculateBoxSize(count);
+    return { id, ...size, count };
+  });
+
+  // Sort by height (tallest first) for better packing
+  categoryData.sort((a, b) => b.height - a.height);
+
+  // Use 3 columns
+  const numColumns = 3;
+  const columnWidths = [300, 320, 300];
+  const columnX = [
+    PADDING,
+    PADDING + columnWidths[0] + GAP,
+    PADDING + columnWidths[0] + columnWidths[1] + GAP * 2,
+  ];
+  const columnY = [TITLE_HEIGHT, TITLE_HEIGHT, TITLE_HEIGHT];
+
+  // Assign each category to the shortest column
+  categoryData.forEach(({ id, width, height }) => {
+    // Find column with least height
+    let minCol = 0;
+    for (let i = 1; i < numColumns; i++) {
+      if (columnY[i] < columnY[minCol]) {
+        minCol = i;
+      }
+    }
+
+    // Place in that column
+    layout[id] = {
+      x: columnX[minCol],
+      y: columnY[minCol],
+      width: columnWidths[minCol],
+      height: height,
+    };
+
+    // Update column height
+    columnY[minCol] += height + GAP;
+  });
+
+  // Calculate total canvas dimensions
+  const maxHeight = Math.max(...columnY) + PADDING;
+  const totalWidth =
+    columnX[numColumns - 1] + columnWidths[numColumns - 1] + PADDING;
+
+  return { layout, canvasWidth: totalWidth, canvasHeight: maxHeight };
+};
+
+export const FullCanvas: React.FC<FullCanvasProps> = ({
+  projects,
+  onAddProject,
+  isSubmitting,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  
-  // Form state
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState<CategoryType | ''>('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formImage, setFormImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Center the canvas on load
+  // Use refs for transform to avoid re-renders during pan/zoom
+  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
+  const isPanningRef = useRef(false);
+  const startPanRef = useRef({ x: 0, y: 0 });
+  const rafIdRef = useRef<number | null>(null);
+
+  // Only use state for UI that needs re-renders
+  const [displayScale, setDisplayScale] = useState(100);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  // Group projects by category
+  const projectsByCategory = useMemo(() => {
+    return projects.reduce((acc, project) => {
+      if (!acc[project.category]) acc[project.category] = [];
+      acc[project.category].push(project);
+      return acc;
+    }, {} as Record<string, EcosystemProject[]>);
+  }, [projects]);
+
+  // Calculate dynamic layout based on projects
+  const {
+    layout: dynamicLayout,
+    canvasWidth,
+    canvasHeight,
+  } = useMemo(() => {
+    return calculateLayout(CATEGORIES, projectsByCategory);
+  }, [projectsByCategory]);
+
+  // Apply transform directly to DOM (no React re-render)
+  const applyTransform = useCallback(() => {
+    if (canvasRef.current) {
+      const { x, y, scale } = transformRef.current;
+      canvasRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+    }
+  }, []);
+
+  // Center the canvas on load and when layout changes
   useEffect(() => {
     const centerCanvas = () => {
-      if (typeof window !== 'undefined') {
-        const scale = Math.min(0.9, (window.innerWidth - 100) / CANVAS_WIDTH, (window.innerHeight - 100) / CANVAS_HEIGHT);
-        const x = (window.innerWidth - CANVAS_WIDTH * scale) / 2;
-        const y = (window.innerHeight - CANVAS_HEIGHT * scale) / 2;
-        setTransform({ x, y, scale });
+      if (typeof window !== "undefined") {
+        const scale = Math.min(
+          0.9,
+          (window.innerWidth - 100) / canvasWidth,
+          (window.innerHeight - 100) / canvasHeight
+        );
+        const x = (window.innerWidth - canvasWidth * scale) / 2;
+        const y = (window.innerHeight - canvasHeight * scale) / 2;
+        transformRef.current = { x, y, scale };
+        setDisplayScale(Math.round(scale * 100));
+        applyTransform();
       }
     };
     centerCanvas();
-  }, []);
-
-  // Group projects by category
-  const projectsByCategory = projects.reduce((acc, project) => {
-    if (!acc[project.category]) acc[project.category] = [];
-    acc[project.category].push(project);
-    return acc;
-  }, {} as Record<CategoryType, EcosystemProject[]>);
+  }, [applyTransform, canvasWidth, canvasHeight]);
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
   };
 
-  // Get colors based on category (not project name)
-  const getCategoryProjectColors = (category: CategoryType) => {
-    const baseColor = CATEGORY_COLORS[category];
+  // Get colors based on category (with fallback for new categories)
+  const getCategoryProjectColors = (category: string) => {
+    const baseColor = CATEGORY_COLORS[category as CategoryType] || "#6366f1"; // Default to indigo
     // Parse the hex color and create lighter/darker variants
-    const hex = baseColor.replace('#', '');
+    const hex = baseColor.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
+
     return {
       bg: `rgba(${r}, ${g}, ${b}, 0.15)`,
       text: baseColor,
@@ -99,244 +198,299 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
     };
   };
 
-  // Scatter items within a box organically
-  const getItemPosition = (index: number, total: number, boxWidth: number, boxHeight: number) => {
-    const cols = Math.ceil(Math.sqrt(total * (boxWidth / boxHeight)));
-    const rows = Math.ceil(total / cols);
-    const cellW = (boxWidth - 24) / cols;
-    const cellH = (boxHeight - 50) / rows;
-    
-    const row = Math.floor(index / cols);
-    const col = index % cols;
-    
-    const jitterX = (Math.sin(index * 3.7) * 0.1) * cellW;
-    const jitterY = (Math.cos(index * 2.3) * 0.1) * cellH;
-    
-    return {
-      x: 12 + col * cellW + cellW / 2 + jitterX,
-      y: 40 + row * cellH + cellH / 2 + jitterY,
-    };
+  // Simple hash function to generate a deterministic number from a string
+  const hashString = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
   };
 
-  // Pan handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 && !isFormOpen) {
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    }
+  // Seeded random number generator for deterministic randomness
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed * 9999) * 10000;
+    return x - Math.floor(x);
   };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isPanning) {
-      setTransform(prev => ({
-        ...prev,
-        x: e.clientX - startPan.x,
-        y: e.clientY - startPan.y,
-      }));
-    }
-  }, [isPanning, startPan]);
+  // Calculate all item positions for a category using d3-force with collision detection
+  interface ForceNode extends SimulationNodeDatum {
+    id: string;
+    x: number;
+    y: number;
+    radius: number;
+  }
 
-  const handleMouseUp = () => setIsPanning(false);
-
-  // Zoom handlers - slower zoom speed, sensible limits
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (isFormOpen) return;
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.97 : 1.03; // Slower zoom
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.max(0.5, Math.min(2, prev.scale * delta)), // Min 50%, Max 200%
-    }));
-  }, [isFormOpen]);
-
-  const zoomIn = () => setTransform(prev => ({ ...prev, scale: Math.min(2, prev.scale * 1.15) }));
-  const zoomOut = () => setTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale / 1.15) }));
-  const resetView = () => {
-    const scale = Math.min(0.9, (window.innerWidth - 100) / CANVAS_WIDTH, (window.innerHeight - 100) / CANVAS_HEIGHT);
-    const x = (window.innerWidth - CANVAS_WIDTH * scale) / 2;
-    const y = (window.innerHeight - CANVAS_HEIGHT * scale) / 2;
-    setTransform({ x, y, scale });
-  };
-
-  // Form handlers
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image must be less than 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => setFormImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (!formName.trim()) {
-      toast.error('Please enter a project name');
-      return;
-    }
-    if (!formCategory) {
-      toast.error('Please select a category');
-      return;
+  const calculateCategoryPositions = (
+    categoryProjects: EcosystemProject[],
+    boxWidth: number,
+    boxHeight: number,
+    baseSize: number
+  ): Record<string, { x: number; y: number }> => {
+    if (categoryProjects.length === 0) {
+      return {};
     }
 
-    onAddProject({
-      name: formName.trim(),
-      category: formCategory,
-      description: formDescription.trim() || undefined,
-      imageUrl: formImage || undefined,
+    // Calculate collision radius based on full item dimensions (icon + label)
+    const itemWidth = baseSize + 24;
+    const itemHeight = baseSize * 0.72 + 22;
+    // Use max dimension to ensure no overlap since items are rectangular
+    const collisionRadius = Math.max(itemWidth, itemHeight) / 2 + 6;
+
+    // Define usable area within the box
+    const padding = 20;
+    const topPadding = 42;
+    const minX = padding + collisionRadius;
+    const maxX = boxWidth - padding - collisionRadius;
+    const minY = topPadding + collisionRadius;
+    const maxY = boxHeight - padding - collisionRadius;
+
+    // Create nodes with initial random positions based on project ID
+    const nodes: ForceNode[] = categoryProjects.map((project) => {
+      const hash = hashString(project.id);
+      const randX = seededRandom(hash);
+      const randY = seededRandom(hash + 1000);
+      return {
+        id: project.id,
+        x: minX + randX * Math.max(1, maxX - minX),
+        y: minY + randY * Math.max(1, maxY - minY),
+        radius: collisionRadius,
+      };
     });
 
-    // Reset form
-    setFormName('');
-    setFormCategory('');
-    setFormDescription('');
-    setFormImage(null);
-    setIsFormOpen(false);
-    toast.success('Added to ecosystem!');
+    // Create and run force simulation - collision only, no centering
+    const simulation = forceSimulation<ForceNode>(nodes)
+      .force(
+        "collide",
+        forceCollide<ForceNode>((d) => d.radius)
+          .strength(1)
+          .iterations(10)
+      )
+      .stop();
+
+    // Run simulation to completion
+    for (let i = 0; i < 500; i++) {
+      simulation.tick();
+
+      // Constrain nodes to box bounds after each tick
+      nodes.forEach((node) => {
+        node.x = Math.max(minX, Math.min(maxX, node.x!));
+        node.y = Math.max(minY, Math.min(maxY, node.y!));
+      });
+    }
+
+    // Convert to position record
+    const positions: Record<string, { x: number; y: number }> = {};
+    nodes.forEach((node) => {
+      positions[node.id] = { x: node.x!, y: node.y! };
+    });
+
+    return positions;
   };
+
+  // Memoize positions for each category to avoid recalculating on every render
+  const categoryPositions = useMemo(() => {
+    const allPositions: Record<
+      string,
+      Record<string, { x: number; y: number }>
+    > = {};
+
+    Object.entries(dynamicLayout).forEach(([categoryId, boxLayout]) => {
+      const categoryProjects = projectsByCategory[categoryId] || [];
+      const baseSize = Math.min(55, Math.max(38, boxLayout.width / 5.5));
+      allPositions[categoryId] = calculateCategoryPositions(
+        categoryProjects,
+        boxLayout.width,
+        boxLayout.height,
+        baseSize
+      );
+    });
+
+    return allPositions;
+  }, [dynamicLayout, projectsByCategory]);
+
+  // Pan handlers - use refs and requestAnimationFrame for smooth performance
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      isPanningRef.current = true;
+      startPanRef.current = {
+        x: e.clientX - transformRef.current.x,
+        y: e.clientY - transformRef.current.y,
+      };
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grabbing";
+      }
+    }
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isPanningRef.current) return;
+
+      // Cancel any pending animation frame
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      // Schedule update on next animation frame
+      rafIdRef.current = requestAnimationFrame(() => {
+        transformRef.current.x = e.clientX - startPanRef.current.x;
+        transformRef.current.y = e.clientY - startPanRef.current.y;
+        applyTransform();
+      });
+    },
+    [applyTransform]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    isPanningRef.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = "grab";
+    }
+  }, []);
+
+  // Zoom handlers - use refs for immediate response
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
+
+      // Cancel any pending animation frame
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        const delta = e.deltaY > 0 ? 0.97 : 1.03;
+        const newScale = Math.max(
+          0.5,
+          Math.min(2, transformRef.current.scale * delta)
+        );
+
+        // Zoom toward mouse position
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          const scaleChange = newScale / transformRef.current.scale;
+          transformRef.current.x =
+            mouseX - (mouseX - transformRef.current.x) * scaleChange;
+          transformRef.current.y =
+            mouseY - (mouseY - transformRef.current.y) * scaleChange;
+        }
+
+        transformRef.current.scale = newScale;
+        applyTransform();
+        setDisplayScale(Math.round(newScale * 100));
+      });
+    },
+    [applyTransform]
+  );
+
+  const zoomIn = useCallback(() => {
+    const newScale = Math.min(2, transformRef.current.scale * 1.15);
+    transformRef.current.scale = newScale;
+    applyTransform();
+    setDisplayScale(Math.round(newScale * 100));
+  }, [applyTransform]);
+
+  const zoomOut = useCallback(() => {
+    const newScale = Math.max(0.5, transformRef.current.scale / 1.15);
+    transformRef.current.scale = newScale;
+    applyTransform();
+    setDisplayScale(Math.round(newScale * 100));
+  }, [applyTransform]);
+
+  const resetView = useCallback(() => {
+    const scale = Math.min(
+      0.9,
+      (window.innerWidth - 100) / canvasWidth,
+      (window.innerHeight - 100) / canvasHeight
+    );
+    const x = (window.innerWidth - canvasWidth * scale) / 2;
+    const y = (window.innerHeight - canvasHeight * scale) / 2;
+    transformRef.current = { x, y, scale };
+    applyTransform();
+    setDisplayScale(Math.round(scale * 100));
+  }, [applyTransform, canvasWidth, canvasHeight]);
+
+  // Cleanup RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-white overflow-hidden">
       {/* Top Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
+      <div className="absolute top-4 left-4 z-30">
         <div className="bg-white rounded-xl px-6 py-3 shadow-lg border border-foreground/10 flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
-              <span className="text-background font-bold text-sm">NS</span>
-            </div>
+            <svg
+              width="30"
+              height="20"
+              viewBox="0 0 30 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-foreground"
+            >
+              <path
+                d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                fill="currentColor"
+              />
+            </svg>
             <div>
-              <h1 className="text-sm font-bold text-foreground leading-tight">NS Ecosystem</h1>
-              <p className="text-[10px] text-muted-foreground">{projects.length} organizations</p>
+              <h1 className="text-sm font-bold text-foreground leading-tight">
+                NS Tools
+              </h1>
+              <p className="text-[10px] text-muted-foreground">
+                {projects.length} organizations
+              </p>
             </div>
           </div>
-          
+
           <div className="h-6 w-px bg-border" />
-          
+
           {/* Zoom Controls */}
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={zoomOut}
+            >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
             <span className="text-xs text-muted-foreground w-10 text-center">
-              {Math.round(transform.scale * 100)}%
+              {displayScale}%
             </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={zoomIn}
+            >
               <ZoomIn className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetView}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={resetView}
+            >
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Add Project Button */}
-      <div className="absolute bottom-6 right-6 z-30">
-        <Popover open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              size="lg" 
-              className="rounded-full shadow-lg h-14 px-6 gap-2 text-base"
-            >
-              <Plus className="h-5 w-5" />
-              Add Project
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent 
-            side="top" 
-            align="end" 
-            className="w-80 p-4"
-            sideOffset={12}
-          >
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-foreground">Submit a Project</h3>
-                <p className="text-xs text-muted-foreground">Add an organization to the ecosystem</p>
-              </div>
-
-              {/* Image Upload */}
-              <div>
-                <Label className="text-xs">Logo (optional)</Label>
-                <div 
-                  className="mt-1 border border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:border-foreground/30 hover:bg-muted/30 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {formImage ? (
-                    <div className="relative inline-block">
-                      <img src={formImage} alt="Preview" className="w-12 h-12 object-cover rounded" />
-                      <button
-                        className="absolute -top-1 -right-1 bg-foreground text-background rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
-                        onClick={(e) => { e.stopPropagation(); setFormImage(null); }}
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">Click to upload</span>
-                    </div>
-                  )}
-                </div>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-              </div>
-
-              {/* Name */}
-              <div>
-                <Label htmlFor="name" className="text-xs">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Organization name"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="mt-1 h-9"
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <Label className="text-xs">Category *</Label>
-                <Select value={formCategory} onValueChange={(val) => setFormCategory(val as CategoryType)}>
-                  <SelectTrigger className="mt-1 h-9">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[opt.value] }} />
-                          {opt.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Description */}
-              <div>
-                <Label htmlFor="desc" className="text-xs">Description</Label>
-                <Textarea
-                  id="desc"
-                  placeholder="Brief description..."
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="mt-1 h-16 resize-none"
-                  maxLength={150}
-                />
-              </div>
-
-              <Button onClick={handleSubmit} className="w-full">
-                <Upload className="w-4 h-4 mr-2" />
-                Add to Map
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+      {/* Add Project Form */}
+      <AddProjectForm onAddProject={onAddProject} isSubmitting={isSubmitting} />
 
       {/* Canvas hint */}
       <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
@@ -346,7 +500,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
+        className="w-full h-full cursor-grab select-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -354,56 +508,72 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
         onWheel={handleWheel}
       >
         <div
-          className="relative origin-top-left transition-transform duration-75"
+          ref={canvasRef}
+          className="origin-top-left will-change-transform bg-white relative"
           style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            width: CANVAS_WIDTH,
-            height: CANVAS_HEIGHT,
+            width: canvasWidth,
+            height: canvasHeight,
           }}
         >
           {/* Title on canvas */}
-          <div 
-            className="absolute whitespace-nowrap"
-            style={{
-              top: 20,
-              left: CANVAS_WIDTH / 2,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            <h2 className="text-3xl font-bold text-foreground">
-              Mapping of the NS Startup Ecosystem
+          <div className="flex items-center justify-center gap-3 pt-4 pb-2">
+            <svg
+              width="36"
+              height="24"
+              viewBox="0 0 30 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-foreground"
+            >
+              <path
+                d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                fill="currentColor"
+              />
+            </svg>
+            <h2 className="text-2xl font-bold text-foreground">
+              NS Tools Atlas
             </h2>
           </div>
 
-          {/* Category Boxes */}
-          {CATEGORIES.map(category => {
-            const layout = CANVAS_LAYOUT[category.id];
-            const categoryProjects = projectsByCategory[category.id] || [];
+          {/* Category Boxes - Dynamic Layout */}
+          {Object.entries(dynamicLayout).map(([categoryId, boxLayout]) => {
+            const category = CATEGORIES.find((c) => c.id === categoryId);
+            const categoryName =
+              category?.name ||
+              categoryId
+                .split("-")
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(" ");
+            const categoryProjects = projectsByCategory[categoryId] || [];
 
             return (
               <div
-                key={category.id}
+                key={categoryId}
                 className="absolute rounded-lg bg-white border-2 border-foreground/80"
                 style={{
-                  left: layout.x,
-                  top: layout.y,
-                  width: layout.width,
-                  height: layout.height,
+                  left: boxLayout.x,
+                  top: boxLayout.y,
+                  width: boxLayout.width,
+                  height: boxLayout.height,
                 }}
               >
-                {/* Category Label - Centered in top border */}
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 -top-3 px-3 py-1 text-xs font-semibold bg-white border-2 border-foreground/80 rounded"
-                >
-                  {category.name}
+                {/* Category Label */}
+                <div className="absolute left-1/2 -translate-x-1/2 -top-3 px-3 py-1 text-xs font-semibold bg-white">
+                  {categoryName}
                 </div>
 
                 {/* Scattered Items */}
-                {categoryProjects.map((project, index) => {
-                  const pos = getItemPosition(index, categoryProjects.length, layout.width, layout.height);
-                  const colors = getCategoryProjectColors(category.id);
+                {categoryProjects.map((project) => {
+                  const pos = categoryPositions[categoryId]?.[project.id] || {
+                    x: boxLayout.width / 2,
+                    y: boxLayout.height / 2,
+                  };
+                  const colors = getCategoryProjectColors(categoryId);
                   const isHovered = hoveredItem === project.id;
-                  const baseSize = Math.min(55, Math.max(38, layout.width / 5.5));
+                  const baseSize = Math.min(
+                    55,
+                    Math.max(38, boxLayout.width / 5.5)
+                  );
 
                   return (
                     <div
@@ -412,13 +582,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                       style={{
                         left: pos.x,
                         top: pos.y,
-                        transform: `translate(-50%, -50%) ${isHovered ? 'scale(1.12)' : 'scale(1)'}`,
+                        transform: `translate(-50%, -50%) ${
+                          isHovered ? "scale(1.12)" : "scale(1)"
+                        }`,
                         zIndex: isHovered ? 10 : 1,
                       }}
                       onMouseEnter={() => setHoveredItem(project.id)}
                       onMouseLeave={() => setHoveredItem(null)}
                     >
-                      {/* Logo box */}
                       <div
                         className="rounded-lg flex items-center justify-center font-bold cursor-pointer transition-shadow"
                         style={{
@@ -427,19 +598,22 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                           backgroundColor: colors.bg,
                           color: colors.text,
                           border: `2px solid ${colors.border}`,
-                          fontSize: baseSize * 0.28,
-                          boxShadow: isHovered ? '0 6px 16px rgba(0,0,0,0.12)' : 'none',
+                          fontSize: project.emoji
+                            ? baseSize * 0.4
+                            : baseSize * 0.28,
+                          boxShadow: isHovered
+                            ? "0 6px 16px rgba(0,0,0,0.12)"
+                            : "none",
                         }}
                       >
-                        {getInitials(project.name)}
+                        {project.emoji || getInitials(project.name)}
                       </div>
-                      {/* Name */}
                       <div
                         className="mt-1 text-center leading-tight truncate"
                         style={{
                           fontSize: Math.max(9, baseSize * 0.18),
                           maxWidth: baseSize + 20,
-                          color: isHovered ? colors.text : '#333',
+                          color: isHovered ? colors.text : "#333",
                           fontWeight: isHovered ? 600 : 400,
                         }}
                       >
@@ -453,7 +627,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
           })}
 
           {/* Footer */}
-          <div className="absolute bottom-3 right-6 text-[11px] text-muted-foreground">
+          <div className="absolute bottom-2 right-4 text-[10px] text-muted-foreground">
             v1.0 • NS Ecosystem Map
           </div>
         </div>
