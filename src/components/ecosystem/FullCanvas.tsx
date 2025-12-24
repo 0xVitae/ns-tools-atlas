@@ -938,10 +938,10 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             )}
                           </div>
                           <div
-                            className="mt-1 text-center leading-tight truncate transition-all duration-150 ease-out"
+                            className="mt-1 text-center leading-tight transition-all duration-150 ease-out"
                             style={{
                               fontSize: Math.max(9, displaySize * 0.18),
-                              maxWidth: displaySize + 20,
+                              width: displaySize + 20,
                               color: isSelected
                                 ? colors.text
                                 : isHovered
@@ -989,7 +989,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               )}
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="font-semibold text-sm truncate">
+                              <span className="font-semibold text-sm">
                                 {project.name}
                               </span>
                               <span
