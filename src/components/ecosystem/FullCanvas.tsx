@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { EcosystemProject, Category } from "@/types/ecosystem";
 import { buildCategoriesFromProjects, getCategoryColor, getCategoryName } from "@/data/ecosystemData";
-import { ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, ExternalLink, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -25,6 +25,76 @@ interface FullCanvasProps {
   onAddProject: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
 }
+
+// Product Image Carousel Component with prev/next buttons
+const ProductImageCarousel: React.FC<{ images: string[]; projectName: string }> = ({ images, projectName }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const goToPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  return (
+    <div className="relative pt-2">
+      {/* Main Image */}
+      <div className="rounded-lg overflow-hidden border border-border/50 bg-muted/20">
+        <img
+          src={images[currentIndex]}
+          alt={`${projectName} screenshot ${currentIndex + 1}`}
+          className="w-full h-auto object-contain"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='60' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21,15 16,10 5,21'/%3E%3C/svg%3E";
+          }}
+        />
+      </div>
+
+      {/* Navigation - only show if more than 1 image */}
+      {images.length > 1 && (
+        <>
+          {/* Prev/Next Buttons */}
+          <button
+            onClick={goToPrev}
+            className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/90 border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={goToNext}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/90 border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="flex items-center justify-center gap-1.5 pt-2">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setCurrentIndex(idx);
+                }}
+                className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  idx === currentIndex ? 'bg-primary' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 // Layout constants
 const PADDING = 40;
@@ -791,7 +861,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent
-                        className="w-72 z-50"
+                        className={`z-50 ${project.productImages && project.productImages.length > 0 ? 'w-96' : 'w-72'}`}
                         side="top"
                         sideOffset={12}
                       >
@@ -842,18 +912,40 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             </p>
                           )}
 
-                          {/* Website link */}
-                          {project.url && (
-                            <a
-                              href={project.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-sm text-primary hover:underline w-fit"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              Visit website
-                            </a>
+                          {/* Links */}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            {project.url && (
+                              <a
+                                href={project.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-sm text-primary hover:underline w-fit"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Website
+                              </a>
+                            )}
+                            {project.guideUrl && (
+                              <a
+                                href={project.guideUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-sm text-primary hover:underline w-fit"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                Guide
+                              </a>
+                            )}
+                          </div>
+
+                          {/* Product Images Carousel */}
+                          {project.productImages && project.productImages.length > 0 && (
+                            <ProductImageCarousel
+                              images={project.productImages}
+                              projectName={project.name}
+                            />
                           )}
 
                         </div>

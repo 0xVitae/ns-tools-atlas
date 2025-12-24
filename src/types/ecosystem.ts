@@ -18,6 +18,8 @@ export interface EcosystemProject {
   emoji?: string;
   description?: string;
   url?: string;
+  guideUrl?: string;    // Link to a guide/documentation
+  productImages?: string[];  // Array of product image URLs (max 3)
   customCategory?: CustomCategory;  // Present when suggesting a new category
 }
 
