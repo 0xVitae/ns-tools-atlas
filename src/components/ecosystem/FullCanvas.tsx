@@ -31,8 +31,8 @@ const GAP = 24;
 const TITLE_HEIGHT = 90;
 const MIN_BOX_WIDTH = 240;
 const MIN_BOX_HEIGHT = 160;
-const CELL_WIDTH = 100; // Width per item cell (matches collision diameter)
-const CELL_HEIGHT = 90; // Height per item cell (icon + label + spacing)
+const CELL_WIDTH = 110; // Width per item cell
+const CELL_HEIGHT = 100; // Height per item cell (icon + label + spacing)
 const ITEMS_PER_ROW_BASE = 4; // Base items per row for width calculation
 
 // Calculate box dimensions based on project count
@@ -253,10 +253,13 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   ): Record<string, { x: number; y: number }> => {
     if (categoryProjects.length === 0) return {};
 
-    // Calculate minimum distance between item centers (based on bounding box)
-    const itemWidth = baseSize + 30;
-    const itemHeight = baseSize * 0.72 + 28;
-    const minDistance = Math.max(itemWidth, itemHeight) + 8;
+    // Calculate minimum distance between item centers
+    // Each item has icon (baseSize x baseSize*0.72) plus label text below
+    const itemWidth = baseSize + 20; // icon width + some label overhang
+    const itemHeight = baseSize * 0.72 + 24; // icon height + label + margin
+    // Minimum distance must be at least the full height (for vertical stacking)
+    // or full width (for horizontal placement)
+    const minDistance = Math.max(itemWidth, itemHeight) + 20;
 
     // Usable area bounds
     const padding = 24;
@@ -527,7 +530,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
             </svg>
             <div>
               <h1 className="text-sm font-bold text-foreground leading-tight">
-                NS Tools
+                NS Tools Atlas
               </h1>
               <p className="text-[10px] text-muted-foreground">
                 {projects.length} organizations
