@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 15%;
 
-    --primary: 220 70% 50%;
+    --primary: 220 15% 15%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 15% 96%;
@@ -32,7 +32,7 @@
 
     --border: 220 15% 90%;
     --input: 220 15% 90%;
-    --ring: 220 70% 50%;
+    --ring: 220 15% 15%;
 
     --radius: 0.625rem;
 
@@ -57,12 +57,12 @@
 
     --sidebar-background: 220 15% 98%;
     --sidebar-foreground: 220 15% 25%;
-    --sidebar-primary: 220 70% 50%;
+    --sidebar-primary: 220 15% 15%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 15% 94%;
     --sidebar-accent-foreground: 220 15% 25%;
     --sidebar-border: 220 15% 90%;
-    --sidebar-ring: 220 70% 50%;
+    --sidebar-ring: 220 15% 15%;
   }
 
   .dark {
