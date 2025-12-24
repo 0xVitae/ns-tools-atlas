@@ -55,11 +55,80 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
   const MAX_PRODUCT_IMAGES = 3;
 
+  // Image validation state
+  const [logoImageValid, setLogoImageValid] = useState<boolean | null>(null);
+  const [productImagesValid, setProductImagesValid] = useState<
+    Record<number, boolean>
+  >({});
+
+  // URL validation helper
+  const isValidUrl = (url: string): boolean => {
+    if (!url.trim()) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  // Validation states for URLs
+  const isWebsiteUrlValid = isValidUrl(formUrl);
+  const isGuideUrlValid = !formGuideUrl.trim() || isValidUrl(formGuideUrl);
+  const isLogoUrlValid =
+    !formImageUrl.trim() ||
+    (isValidUrl(formImageUrl) && logoImageValid !== false);
+
+  // Check all product images are valid
+  const allProductImagesValid =
+    formProductImages.length === 0 ||
+    formProductImages.every((_, idx) => productImagesValid[idx] !== false);
+
+  // Calculate form completion as individual steps
+  const completedSteps = useMemo(() => {
+    const steps = [
+      formEmoji ||
+        (formImageUrl.trim() && isLogoUrlValid && logoImageValid === true), // Visual identity (with valid image)
+      formName.trim(), // Name
+      isWebsiteUrlValid && isGuideUrlValid, // URLs valid
+      formCategory && (!isCreatingNewCategory || newCategoryName.trim()), // Category
+      formDescription.trim(), // Description
+    ];
+    return steps.map(Boolean);
+  }, [
+    formName,
+    formEmoji,
+    formImageUrl,
+    isLogoUrlValid,
+    logoImageValid,
+    isWebsiteUrlValid,
+    isGuideUrlValid,
+    formCategory,
+    isCreatingNewCategory,
+    newCategoryName,
+    formDescription,
+  ]);
+
+  const allComplete = completedSteps.every(Boolean);
+
+  // Progressive reveal conditions (require valid data to proceed)
+  const showStep3 = Boolean(
+    formName.trim() && isWebsiteUrlValid && isGuideUrlValid
+  );
+  const showStep4 =
+    showStep3 &&
+    Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim()));
+  const showStep5 = showStep4 && Boolean(formDescription.trim());
+
   // Helper to add a product image
   const handleAddProductImage = () => {
     const url = newProductImageUrl.trim();
     if (!url) {
       toast.error("Please enter an image URL");
+      return;
+    }
+    if (!isValidUrl(url)) {
+      toast.error("Please enter a valid URL (http:// or https://)");
       return;
     }
     if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
@@ -76,6 +145,20 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   // Helper to remove a product image
   const handleRemoveProductImage = (index: number) => {
+    // Remove from validation state
+    const newValidState = { ...productImagesValid };
+    delete newValidState[index];
+    // Re-index remaining items
+    const reindexed: Record<number, boolean> = {};
+    Object.keys(newValidState).forEach((key) => {
+      const numKey = parseInt(key);
+      if (numKey > index) {
+        reindexed[numKey - 1] = newValidState[numKey];
+      } else {
+        reindexed[numKey] = newValidState[numKey];
+      }
+    });
+    setProductImagesValid(reindexed);
     setFormProductImages(formProductImages.filter((_, i) => i !== index));
   };
 
@@ -163,6 +246,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setFormProductImages([]);
     setNewProductImageUrl("");
     setShowEmojiPicker(false);
+    setLogoImageValid(null);
+    setProductImagesValid({});
     setIsFormOpen(false);
   };
 
@@ -184,11 +269,30 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl"
           sideOffset={8}
         >
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
-            <h3 className="text-sm font-semibold text-foreground tracking-tight">
-              Add Project
-            </h3>
+          {/* Header with Progress Bar Border */}
+          <div className="relative bg-muted/30">
+            <div className="px-4 py-3">
+              <h3 className="text-sm font-semibold text-foreground tracking-tight">
+                Add Project
+              </h3>
+            </div>
+            {/* Progress bar as bottom border */}
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-border/30">
+              <div
+                className={`h-full transition-all duration-500 ease-out ${
+                  allComplete
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                    : "bg-primary"
+                }`}
+                style={{
+                  width: `${
+                    (completedSteps.filter(Boolean).length /
+                      completedSteps.length) *
+                    100
+                  }%`,
+                }}
+              />
+            </div>
           </div>
 
           <div className="p-4 space-y-5">
@@ -260,37 +364,61 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     type="url"
                     placeholder="Logo URL"
                     value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    className="h-10 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                    onChange={(e) => {
+                      setFormImageUrl(e.target.value);
+                      setLogoImageValid(null); // Reset validation on change
+                    }}
+                    className={`h-10 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+                      formImageUrl.trim() && !isValidUrl(formImageUrl)
+                        ? "border-red-400 focus:border-red-400"
+                        : logoImageValid === false
+                        ? "border-red-400 focus:border-red-400"
+                        : logoImageValid === true
+                        ? "border-emerald-400 focus:border-emerald-400"
+                        : ""
+                    }`}
                   />
                 </div>
               </div>
 
               {/* Image Preview */}
-              {formImageUrl.trim() && (
-                <div className="flex items-center justify-center p-3 bg-muted/30 rounded-lg border border-border/50">
+              {formImageUrl.trim() && isValidUrl(formImageUrl) && (
+                <div
+                  className={`flex items-center justify-center p-3 rounded-lg border ${
+                    logoImageValid === false
+                      ? "bg-red-50 border-red-200"
+                      : logoImageValid === true
+                      ? "bg-emerald-50 border-emerald-200"
+                      : "bg-muted/30 border-border/50"
+                  }`}
+                >
                   <img
                     src={formImageUrl}
                     alt="Logo preview"
-                    className="max-h-16 max-w-full object-contain rounded"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                      (
-                        e.target as HTMLImageElement
-                      ).nextElementSibling?.classList.remove("hidden");
+                    className={`max-h-16 max-w-full object-contain rounded ${
+                      logoImageValid === false ? "hidden" : ""
+                    }`}
+                    onError={() => {
+                      setLogoImageValid(false);
                     }}
-                    onLoad={(e) => {
-                      (e.target as HTMLImageElement).style.display = "block";
-                      (
-                        e.target as HTMLImageElement
-                      ).nextElementSibling?.classList.add("hidden");
+                    onLoad={() => {
+                      setLogoImageValid(true);
                     }}
                   />
-                  <div className="hidden text-xs text-muted-foreground/60 flex items-center gap-1.5">
-                    <X className="h-3 w-3" />
-                    Failed to load image
-                  </div>
+                  {logoImageValid === false && (
+                    <div className="text-xs text-red-500 flex items-center gap-1.5">
+                      <X className="h-3 w-3" />
+                      Failed to load image
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Invalid URL message */}
+              {formImageUrl.trim() && !isValidUrl(formImageUrl) && (
+                <p className="text-xs text-red-500">
+                  Please enter a valid URL (http:// or https://)
+                </p>
               )}
             </div>
 
@@ -304,225 +432,303 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   placeholder="Project Name *"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="h-10 text-sm font-medium placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                  className={`h-10 text-sm font-medium placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+                    formName.trim()
+                      ? "border-emerald-400 focus:border-emerald-400"
+                      : ""
+                  }`}
                 />
-                <Input
-                  type="url"
-                  placeholder="Website URL *"
-                  value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
-                  className="h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                />
-                <Input
-                  type="url"
-                  placeholder="How to Guide (recommended)"
-                  value={formGuideUrl}
-                  onChange={(e) => setFormGuideUrl(e.target.value)}
-                  className="h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                />
+                <div>
+                  <Input
+                    type="url"
+                    placeholder="Website URL *"
+                    value={formUrl}
+                    onChange={(e) => setFormUrl(e.target.value)}
+                    className={`h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+                      formUrl.trim()
+                        ? isWebsiteUrlValid
+                          ? "border-emerald-400 focus:border-emerald-400"
+                          : "border-red-400 focus:border-red-400"
+                        : ""
+                    }`}
+                  />
+                  {formUrl.trim() && !isWebsiteUrlValid && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Please enter a valid URL (http:// or https://)
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    type="url"
+                    placeholder="How to Guide (recommended)"
+                    value={formGuideUrl}
+                    onChange={(e) => setFormGuideUrl(e.target.value)}
+                    className={`h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+                      formGuideUrl.trim()
+                        ? isGuideUrlValid
+                          ? "border-emerald-400 focus:border-emerald-400"
+                          : "border-red-400 focus:border-red-400"
+                        : ""
+                    }`}
+                  />
+                  {formGuideUrl.trim() && !isGuideUrlValid && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Please enter a valid URL (http:// or https://)
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* STEP 3: Classification */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                3. Classification
-              </label>
-              <Select
-                value={formCategory}
-                onValueChange={(val) => {
-                  setFormCategory(val);
-                  if (val !== CREATE_NEW_CATEGORY) {
-                    setNewCategoryName("");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-10 text-sm border-border/60 focus:border-foreground/30 data-[placeholder]:text-muted-foreground/50">
-                  <SelectValue placeholder="Select a category *" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BASE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        <span className="text-sm">{cat.name}</span>
+            {showStep3 && (
+              <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  3. Classification
+                </label>
+                <Select
+                  value={formCategory}
+                  onValueChange={(val) => {
+                    setFormCategory(val);
+                    if (val !== CREATE_NEW_CATEGORY) {
+                      setNewCategoryName("");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-sm border-border/60 focus:border-foreground/30 data-[placeholder]:text-muted-foreground/50">
+                    <SelectValue placeholder="Select a category *" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BASE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          <span className="text-sm">{cat.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {/* Divider */}
+                    <div className="h-px bg-border my-1" />
+                    {/* Create New Category Option */}
+                    <SelectItem value={CREATE_NEW_CATEGORY}>
+                      <div className="flex items-center gap-2 text-primary">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span className="text-sm font-medium">
+                          Create New Category
+                        </span>
                       </div>
                     </SelectItem>
-                  ))}
-                  {/* Divider */}
-                  <div className="h-px bg-border my-1" />
-                  {/* Create New Category Option */}
-                  <SelectItem value={CREATE_NEW_CATEGORY}>
-                    <div className="flex items-center gap-2 text-primary">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span className="text-sm font-medium">
-                        Create New Category
-                      </span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
 
-              {/* New Category Name Input */}
-              {isCreatingNewCategory && (
-                <div className="space-y-2 pt-2">
-                  <Input
-                    placeholder="Category name (e.g., Tech Hubs) *"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="h-9 text-sm font-medium placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                    autoFocus
-                  />
-                  {customCategory && (
-                    <p className="text-[10px] text-muted-foreground/60">
-                      Will be created as "{customCategory.id}" after approval
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+                {/* New Category Name Input */}
+                {isCreatingNewCategory && (
+                  <div className="space-y-2 pt-2">
+                    <Input
+                      placeholder="Category name (e.g., Tech Hubs) *"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      className="h-9 text-sm font-medium placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                      autoFocus
+                    />
+                    {customCategory && (
+                      <p className="text-[10px] text-muted-foreground/60">
+                        Will be created as "{customCategory.id}" after approval
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* STEP 4: Description */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                4. Description
-              </label>
-              <Textarea
-                placeholder="Brief description of the organization... *"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                className="min-h-[60px] resize-none text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                maxLength={160}
-              />
-              {formDescription && (
-                <p className="text-[10px] text-muted-foreground/50 text-right">
-                  {formDescription.length}/160
-                </p>
-              )}
-            </div>
+            {showStep4 && (
+              <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  4. Description
+                </label>
+                <Textarea
+                  placeholder="Brief description of the organization... *"
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  className="min-h-[60px] resize-none text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                  maxLength={160}
+                />
+                {formDescription && (
+                  <p className="text-[10px] text-muted-foreground/50 text-right">
+                    {formDescription.length}/160
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* STEP 5: Product Images */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  5. Tool Images
-                </label>
-                <span className="text-[10px] text-muted-foreground/50">
-                  {formProductImages.length}/{MAX_PRODUCT_IMAGES}
-                </span>
-              </div>
-
-              {/* URL Input Row */}
-              {formProductImages.length < MAX_PRODUCT_IMAGES && (
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                      <Images className="h-4 w-4 text-muted-foreground/50" />
-                    </div>
-                    <Input
-                      type="url"
-                      placeholder="Paste image URL..."
-                      value={newProductImageUrl}
-                      onChange={(e) => setNewProductImageUrl(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddProductImage();
-                        }
-                      }}
-                      onPaste={(e) => {
-                        const pastedText = e.clipboardData
-                          .getData("text")
-                          .trim();
-                        if (
-                          pastedText &&
-                          (pastedText.startsWith("http://") ||
-                            pastedText.startsWith("https://"))
-                        ) {
-                          e.preventDefault();
-                          if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
-                            toast.error(
-                              `Maximum ${MAX_PRODUCT_IMAGES} images allowed`
-                            );
-                            return;
-                          }
-                          if (formProductImages.includes(pastedText)) {
-                            toast.error("This image is already added");
-                            return;
-                          }
-                          setFormProductImages([
-                            ...formProductImages,
-                            pastedText,
-                          ]);
-                        }
-                      }}
-                      className="h-9 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleAddProductImage}
-                    className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+            {showStep5 && (
+              <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    5. Tool Images (recommended)
+                  </label>
+                  <span className="text-[10px] text-muted-foreground/50">
+                    {formProductImages.length}/{MAX_PRODUCT_IMAGES}
+                  </span>
                 </div>
-              )}
 
-              {/* Image Gallery Grid */}
-              {formProductImages.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  {formProductImages.map((url, index) => (
-                    <div
-                      key={index}
-                      className="group relative aspect-square rounded-lg overflow-hidden border border-border/50 bg-muted/20 animate-in fade-in-0 zoom-in-95 duration-200"
-                    >
-                      <img
-                        src={url}
-                        alt={`Product ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21,15 16,10 5,21'%3E%3C/polyline%3E%3C/svg%3E";
+                {/* URL Input Row */}
+                {formProductImages.length < MAX_PRODUCT_IMAGES && (
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                        <Images className="h-4 w-4 text-muted-foreground/50" />
+                      </div>
+                      <Input
+                        type="url"
+                        placeholder="Paste image URL..."
+                        value={newProductImageUrl}
+                        onChange={(e) => setNewProductImageUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddProductImage();
+                          }
                         }}
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData
+                            .getData("text")
+                            .trim();
+                          if (
+                            pastedText &&
+                            (pastedText.startsWith("http://") ||
+                              pastedText.startsWith("https://"))
+                          ) {
+                            e.preventDefault();
+                            if (
+                              formProductImages.length >= MAX_PRODUCT_IMAGES
+                            ) {
+                              toast.error(
+                                `Maximum ${MAX_PRODUCT_IMAGES} images allowed`
+                              );
+                              return;
+                            }
+                            if (formProductImages.includes(pastedText)) {
+                              toast.error("This image is already added");
+                              return;
+                            }
+                            setFormProductImages([
+                              ...formProductImages,
+                              pastedText,
+                            ]);
+                          }
+                        }}
+                        className="h-9 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
                       />
-                      {/* Hover overlay with delete */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProductImage(index)}
-                          className="w-7 h-7 rounded-full bg-white/90 text-foreground flex items-center justify-center hover:bg-white transition-colors shadow-sm"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      {/* Index badge */}
-                      <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] font-medium flex items-center justify-center backdrop-blur-sm">
-                        {index + 1}
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAddProductImage}
+                      className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
 
-              {/* Empty state hint */}
-              {formProductImages.length === 0 && (
-                <p className="text-[10px] text-muted-foreground/40 text-center py-1">
-                  Add up to 3 product screenshots (optional)
-                </p>
-              )}
-            </div>
+                {/* Image Gallery Grid */}
+                {formProductImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {formProductImages.map((url, index) => (
+                      <div
+                        key={index}
+                        className={`group relative aspect-square rounded-lg overflow-hidden border-2 bg-muted/20 animate-in fade-in-0 zoom-in-95 duration-200 ${
+                          productImagesValid[index] === false
+                            ? "border-red-400"
+                            : productImagesValid[index] === true
+                            ? "border-emerald-400"
+                            : "border-border/50"
+                        }`}
+                      >
+                        <img
+                          src={url}
+                          alt={`Product ${index + 1}`}
+                          className={`w-full h-full object-cover ${
+                            productImagesValid[index] === false ? "hidden" : ""
+                          }`}
+                          onError={() => {
+                            setProductImagesValid((prev) => ({
+                              ...prev,
+                              [index]: false,
+                            }));
+                          }}
+                          onLoad={() => {
+                            setProductImagesValid((prev) => ({
+                              ...prev,
+                              [index]: true,
+                            }));
+                          }}
+                        />
+                        {/* Error state */}
+                        {productImagesValid[index] === false && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 text-red-500">
+                            <X className="h-5 w-5 mb-1" />
+                            <span className="text-[9px] font-medium">
+                              Failed
+                            </span>
+                          </div>
+                        )}
+                        {/* Hover overlay with delete */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProductImage(index)}
+                            className="w-7 h-7 rounded-full bg-white/90 text-foreground flex items-center justify-center hover:bg-white transition-colors shadow-sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {/* Index badge */}
+                        <div
+                          className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full text-white text-[10px] font-medium flex items-center justify-center backdrop-blur-sm ${
+                            productImagesValid[index] === false
+                              ? "bg-red-500"
+                              : "bg-black/50"
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Warning if any product images failed */}
+                {!allProductImagesValid && (
+                  <p className="text-xs text-red-500">
+                    Some images failed to load. Please remove them or use
+                    different URLs.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
             <Button
               onClick={handleSubmit}
-              className="w-full h-10 text-sm font-medium"
-              disabled={isSubmitting}
+              className={`w-full h-10 text-sm font-medium transition-all duration-300 ${
+                allComplete && allProductImagesValid
+                  ? "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
+                  : ""
+              }`}
+              disabled={
+                isSubmitting ||
+                !allProductImagesValid ||
+                (formImageUrl.trim() && logoImageValid === false)
+              }
             >
               {isSubmitting ? (
                 <>
@@ -530,10 +736,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   Submitting...
                 </>
               ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add to Ecosystem
-                </>
+                <>Add to Atlas</>
               )}
             </Button>
           </div>
