@@ -334,94 +334,104 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return x - Math.floor(x);
   };
 
-  // Calculate all item positions for a category using Poisson Disk Sampling
+  // Calculate all item positions for a category using grid-based layout with jitter
   const calculateCategoryPositions = (
     categoryProjects: EcosystemProject[],
     boxWidth: number,
     boxHeight: number,
-    baseSize: number
+    _baseSize: number
   ): Record<string, { x: number; y: number }> => {
     if (categoryProjects.length === 0) return {};
 
-    // Calculate minimum distance between item centers
-    // Each item has icon (baseSize x baseSize*0.72) plus label text below
-    const itemWidth = baseSize + 20; // icon width + some label overhang
-    const itemHeight = baseSize * 0.72 + 24; // icon height + label + margin
-    // Minimum distance must be at least the full height (for vertical stacking)
-    // or full width (for horizontal placement)
-    const minDistance = Math.max(itemWidth, itemHeight) + 20;
+    const count = categoryProjects.length;
 
     // Usable area bounds
     const padding = 24;
     const topPadding = 45;
-    const minX = padding + itemWidth / 2;
-    const maxX = boxWidth - padding - itemWidth / 2;
-    const minY = topPadding + itemHeight / 2;
-    const maxY = boxHeight - padding - itemHeight / 2;
+    const usableWidth = boxWidth - padding * 2;
+    const usableHeight = boxHeight - topPadding - padding;
 
     const positions: Record<string, { x: number; y: number }> = {};
-    const placedPoints: { x: number; y: number }[] = [];
 
-    // Place each project using rejection sampling
-    for (const project of categoryProjects) {
-      const baseSeed = hashString(project.id);
-      let placed = false;
+    // For small counts (< 5), use scattered placement for organic look
+    if (count < 5) {
+      // Predefined scattered positions as percentages of usable area
+      // Positions are spread apart to prevent overlaps
+      const scatterPatterns: Record<number, { x: number; y: number }[]> = {
+        1: [{ x: 0.5, y: 0.5 }],
+        2: [
+          { x: 0.25, y: 0.35 },
+          { x: 0.75, y: 0.65 },
+        ],
+        3: [
+          { x: 0.2, y: 0.25 },
+          { x: 0.75, y: 0.35 },
+          { x: 0.4, y: 0.75 },
+        ],
+        4: [
+          { x: 0.2, y: 0.25 },
+          { x: 0.8, y: 0.2 },
+          { x: 0.25, y: 0.75 },
+          { x: 0.8, y: 0.7 },
+        ],
+      };
 
-      // Try many random positions
-      for (let attempt = 0; attempt < 100 && !placed; attempt++) {
-        const randX = seededRandom(baseSeed + attempt * 2);
-        const randY = seededRandom(baseSeed + attempt * 2 + 1);
-        const x = minX + randX * Math.max(1, maxX - minX);
-        const y = minY + randY * Math.max(1, maxY - minY);
+      const pattern = scatterPatterns[count];
+      categoryProjects.forEach((project, index) => {
+        const base = pattern[index];
+        const seed = hashString(project.id);
+        // Small jitter (5%) - just enough for organic feel without causing overlaps
+        const jitterX = (seededRandom(seed) - 0.5) * 0.05;
+        const jitterY = (seededRandom(seed + 1) - 0.5) * 0.05;
 
-        // Check distance from all placed points
-        let valid = true;
-        for (const pt of placedPoints) {
-          const dx = x - pt.x;
-          const dy = y - pt.y;
-          if (Math.sqrt(dx * dx + dy * dy) < minDistance) {
-            valid = false;
-            break;
-          }
-        }
+        positions[project.id] = {
+          x: padding + (base.x + jitterX) * usableWidth,
+          y: topPadding + (base.y + jitterY) * usableHeight,
+        };
+      });
 
-        if (valid) {
-          positions[project.id] = { x, y };
-          placedPoints.push({ x, y });
-          placed = true;
-        }
-      }
+      return positions;
+    }
 
-      // Fallback: find position with maximum distance from existing
-      if (!placed) {
-        let bestX = (minX + maxX) / 2;
-        let bestY = (minY + maxY) / 2;
-        let bestMinDist = 0;
+    // For larger counts, use grid with jitter
+    const aspectRatio = usableWidth / usableHeight;
+    let cols = Math.ceil(Math.sqrt(count * aspectRatio));
+    let rows = Math.ceil(count / cols);
 
-        for (let i = 0; i < 50; i++) {
-          const randX = seededRandom(baseSeed + 200 + i * 2);
-          const randY = seededRandom(baseSeed + 200 + i * 2 + 1);
-          const x = minX + randX * Math.max(1, maxX - minX);
-          const y = minY + randY * Math.max(1, maxY - minY);
-
-          let minDist = Infinity;
-          for (const pt of placedPoints) {
-            const dx = x - pt.x;
-            const dy = y - pt.y;
-            minDist = Math.min(minDist, Math.sqrt(dx * dx + dy * dy));
-          }
-
-          if (minDist > bestMinDist) {
-            bestMinDist = minDist;
-            bestX = x;
-            bestY = y;
-          }
-        }
-
-        positions[project.id] = { x: bestX, y: bestY };
-        placedPoints.push({ x: bestX, y: bestY });
+    // Ensure we have enough cells
+    while (cols * rows < count) {
+      if (usableWidth / cols > usableHeight / rows) {
+        cols++;
+      } else {
+        rows++;
       }
     }
+
+    // Calculate cell size
+    const cellWidth = usableWidth / cols;
+    const cellHeight = usableHeight / rows;
+
+    // Maximum jitter is 20% of the smaller cell dimension
+    const maxJitter = Math.min(cellWidth, cellHeight) * 0.2;
+
+    categoryProjects.forEach((project, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+
+      // Center of grid cell
+      const centerX = padding + cellWidth * (col + 0.5);
+      const centerY = topPadding + cellHeight * (row + 0.5);
+
+      // Add deterministic jitter based on project ID
+      const seed = hashString(project.id);
+      const jitterX = (seededRandom(seed) - 0.5) * maxJitter * 2;
+      const jitterY = (seededRandom(seed + 1) - 0.5) * maxJitter * 2;
+
+      positions[project.id] = {
+        x: centerX + jitterX,
+        y: centerY + jitterY,
+      };
+    });
 
     return positions;
   };

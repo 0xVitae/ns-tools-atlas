@@ -22,12 +22,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { toast } from "sonner";
 
 interface AddProjectFormProps {
   onAddProject: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
   categories: Category[];
+  isMobile?: boolean;
 }
 
 const CREATE_NEW_CATEGORY = "__create_new__";
@@ -36,6 +42,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   onAddProject,
   isSubmitting,
   categories,
+  isMobile = false,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState("");
@@ -253,26 +260,11 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setIsFormOpen(false);
   };
 
-  return (
-    <div className="z-30">
-      <Popover open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            size="lg"
-            className="rounded-full shadow-lg h-14 px-6 gap-2 text-base"
-          >
-            <Plus className="h-5 w-5" />
-            Add Project
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="end"
-          className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl"
-          sideOffset={8}
-        >
-          {/* Header with Progress Bar Border */}
-          <div className="relative bg-muted/30">
+  // Form content shared between Popover and Drawer
+  const formContent = (
+    <>
+      {/* Header with Progress Bar Border */}
+      <div className="relative bg-muted/30">
             <div className="px-4 py-3">
               <h3 className="text-sm font-semibold text-foreground tracking-tight">
                 Add Project
@@ -738,6 +730,50 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               )}
             </Button>
           </div>
+    </>
+  );
+
+  // Mobile: use Drawer, Desktop: use Popover
+  if (isMobile) {
+    return (
+      <Drawer open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DrawerTrigger asChild>
+          <Button
+            size="sm"
+            className="rounded-full shadow-lg h-9 px-4 gap-1.5 text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[90vh]">
+          <div className="overflow-y-auto pb-safe">
+            {formContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <div className="z-30">
+      <Popover open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            size="lg"
+            className="rounded-full shadow-lg h-14 px-6 gap-2 text-base"
+          >
+            <Plus className="h-5 w-5" />
+            Add Project
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="end"
+          className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl"
+          sideOffset={8}
+        >
+          {formContent}
         </PopoverContent>
       </Popover>
     </div>
