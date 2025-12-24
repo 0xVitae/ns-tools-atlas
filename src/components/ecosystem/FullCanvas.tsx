@@ -164,7 +164,7 @@ const calculateLayout = (
 
   // Use 3 columns
   const numColumns = 3;
-  const columnWidths = [300, 320, 300];
+  const columnWidths = [460, 460, 460];
   const columnX = [
     PADDING,
     PADDING + columnWidths[0] + GAP,
@@ -182,11 +182,11 @@ const calculateLayout = (
       }
     }
 
-    // Place in that column
+    // Place in that column - use calculated width based on project count
     layout[id] = {
       x: columnX[minCol],
       y: columnY[minCol],
-      width: columnWidths[minCol],
+      width: Math.min(width, columnWidths[minCol]), // Use smaller of calculated or column width
       height: height,
     };
 
@@ -355,38 +355,43 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
     // For small counts (< 5), use scattered placement for organic look
     if (count < 5) {
-      // Predefined scattered positions as percentages of usable area
-      // Positions are spread apart to prevent overlaps
-      const scatterPatterns: Record<number, { x: number; y: number }[]> = {
-        1: [{ x: 0.5, y: 0.5 }],
-        2: [
-          { x: 0.25, y: 0.35 },
-          { x: 0.75, y: 0.65 },
-        ],
-        3: [
-          { x: 0.2, y: 0.25 },
-          { x: 0.75, y: 0.35 },
-          { x: 0.4, y: 0.75 },
-        ],
-        4: [
-          { x: 0.2, y: 0.25 },
-          { x: 0.8, y: 0.2 },
-          { x: 0.25, y: 0.75 },
-          { x: 0.8, y: 0.7 },
-        ],
-      };
+      // Generate unique positions for each category based on project IDs
+      // Use the first project's ID as a category seed for variation
+      const categorySeed = categoryProjects.length > 0 ? hashString(categoryProjects[0].id) : 0;
 
-      const pattern = scatterPatterns[count];
+      // Base positions that ensure good spacing (corners and center regions)
+      const basePositions = [
+        { x: 0.25, y: 0.3 },
+        { x: 0.75, y: 0.3 },
+        { x: 0.25, y: 0.7 },
+        { x: 0.75, y: 0.7 },
+      ];
+
+      // Rotate/shuffle positions based on category seed for variety
+      const rotation = categorySeed % 4;
+      const shuffledPositions = [
+        ...basePositions.slice(rotation),
+        ...basePositions.slice(0, rotation),
+      ];
+
+      // Add category-level offset for more variation
+      const categoryOffsetX = (seededRandom(categorySeed) - 0.5) * 0.15;
+      const categoryOffsetY = (seededRandom(categorySeed + 100) - 0.5) * 0.15;
+
       categoryProjects.forEach((project, index) => {
-        const base = pattern[index];
+        const base = shuffledPositions[index % shuffledPositions.length];
         const seed = hashString(project.id);
-        // Small jitter (5%) - just enough for organic feel without causing overlaps
-        const jitterX = (seededRandom(seed) - 0.5) * 0.05;
-        const jitterY = (seededRandom(seed + 1) - 0.5) * 0.05;
+        // Per-item jitter for organic feel
+        const jitterX = (seededRandom(seed) - 0.5) * 0.08;
+        const jitterY = (seededRandom(seed + 1) - 0.5) * 0.08;
+
+        // Clamp final position to stay within bounds
+        const finalX = Math.max(0.15, Math.min(0.85, base.x + categoryOffsetX + jitterX));
+        const finalY = Math.max(0.15, Math.min(0.85, base.y + categoryOffsetY + jitterY));
 
         positions[project.id] = {
-          x: padding + (base.x + jitterX) * usableWidth,
-          y: topPadding + (base.y + jitterY) * usableHeight,
+          x: padding + finalX * usableWidth,
+          y: topPadding + finalY * usableHeight,
         };
       });
 
@@ -411,8 +416,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     const cellWidth = usableWidth / cols;
     const cellHeight = usableHeight / rows;
 
-    // Maximum jitter is 20% of the smaller cell dimension
-    const maxJitter = Math.min(cellWidth, cellHeight) * 0.2;
+    // Maximum jitter: 15% of cell size, but capped at 12px to prevent overlaps
+    // Items are ~80px wide, so jitter must be small enough that adjacent cells don't collide
+    const maxJitter = Math.min(Math.min(cellWidth, cellHeight) * 0.15, 12);
 
     categoryProjects.forEach((project, index) => {
       const col = index % cols;
@@ -445,7 +451,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
     Object.entries(dynamicLayout).forEach(([categoryId, boxLayout]) => {
       const categoryProjects = projectsByCategory[categoryId] || [];
-      const baseSize = Math.min(55, Math.max(38, boxLayout.width / 5.5));
+      const baseSize = Math.min(90, Math.max(65, boxLayout.width / 4));
       allPositions[categoryId] = calculateCategoryPositions(
         categoryProjects,
         boxLayout.width,
@@ -787,8 +793,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                   const isSelected = selectedItem === project.id;
                   const isGreyedOut = selectedItem !== null && !isSelected;
                   const baseSize = Math.min(
-                    55,
-                    Math.max(38, boxLayout.width / 5.5)
+                    90,
+                    Math.max(65, boxLayout.width / 4)
                   );
                   // Expand size when selected
                   const displaySize = isSelected ? baseSize * 1.3 : baseSize;
