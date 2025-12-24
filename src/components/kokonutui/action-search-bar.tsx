@@ -10,7 +10,7 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "motion/react";
 import { Search, Send } from "lucide-react";
@@ -64,17 +64,22 @@ const ANIMATION_VARIANTS = {
     },
 } as const;
 
-function ActionSearchBar({
-    actions = [],
-    defaultOpen = false,
-    placeholder = "Search...",
-    onSelect,
-}: {
+export interface ActionSearchBarRef {
+    focus: () => void;
+}
+
+const ActionSearchBar = forwardRef<ActionSearchBarRef, {
     actions?: Action[];
     defaultOpen?: boolean;
     placeholder?: string;
     onSelect?: (action: Action) => void;
-}) {
+}>(({
+    actions = [],
+    defaultOpen = false,
+    placeholder = "Search...",
+    onSelect,
+}, ref) => {
+    const inputRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState("");
     const [result, setResult] = useState<SearchResult | null>(null);
     const [isFocused, setIsFocused] = useState(defaultOpen);
@@ -82,6 +87,12 @@ function ActionSearchBar({
     const [selectedAction, setSelectedAction] = useState<Action | null>(null);
     const [activeIndex, setActiveIndex] = useState(-1);
     const debouncedQuery = useDebounce(query, 200);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        },
+    }));
 
     const filteredActions = useMemo(() => {
         if (!debouncedQuery) return actions;
@@ -180,6 +191,7 @@ function ActionSearchBar({
             <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
                 <Input
+                    ref={inputRef}
                     type="text"
                     placeholder={placeholder}
                     value={query}
@@ -263,6 +275,8 @@ function ActionSearchBar({
             </AnimatePresence>
         </motion.div>
     );
-}
+});
+
+ActionSearchBar.displayName = "ActionSearchBar";
 
 export default ActionSearchBar;

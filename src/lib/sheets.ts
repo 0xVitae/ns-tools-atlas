@@ -1,14 +1,11 @@
-import { EcosystemProject, CategoryType } from '@/types/ecosystem';
+import { EcosystemProject } from '@/types/ecosystem';
+import { CATEGORIES } from '@/data/ecosystemData';
 
 // Published CSV URL from Google Sheets (approved tab only)
 const SHEETS_CSV_URL = import.meta.env.VITE_SHEETS_CSV_URL;
 
-// Valid categories for validation
-const VALID_CATEGORIES: CategoryType[] = [
-  'networks', 'coworking', 'media-events', 'education',
-  'local-vcs', 'global-vcs', 'accelerators', 'corporate',
-  'public-entities', 'transport'
-];
+// Get valid category IDs from the JSON file
+const getValidCategoryIds = () => CATEGORIES.map(c => c.id);
 
 /**
  * Parse a CSV line handling quoted fields with commas
@@ -59,23 +56,24 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
   if (lines.length < 2) return []; // Header only or empty
 
   const projects: EcosystemProject[] = [];
+  const validCategoryIds = getValidCategoryIds();
 
   // Skip header row (index 0)
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
     const [id, name, category, description, url, imageUrl, emoji] = values;
 
-    // Validate category
-    if (!VALID_CATEGORIES.includes(category as CategoryType)) {
-      console.warn(`Invalid category "${category}" for project "${name}", skipping`);
-      continue;
+    // Warn about unknown categories but don't skip them
+    // This allows custom categories that have been added to the JSON
+    if (!validCategoryIds.includes(category)) {
+      console.warn(`Unknown category "${category}" for project "${name}" - may be a custom category`);
     }
 
     if (id && name && category) {
       projects.push({
         id,
         name,
-        category: category as CategoryType,
+        category,
         description: description || undefined,
         url: url || undefined,
         imageUrl: imageUrl || undefined,
@@ -89,15 +87,24 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
 
 /**
  * Submit a new project to the pending sheet via API
+ * Includes custom category data if the user is suggesting a new category
  */
 export async function submitProject(
   project: Omit<EcosystemProject, 'id'>
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Prepare submission data - include custom category info if present
+    const submissionData = {
+      ...project,
+      // Flatten custom category for easier handling in sheets
+      customCategoryName: project.customCategory?.name,
+      customCategoryColor: project.customCategory?.color,
+    };
+
     const response = await fetch('/api/submit-project', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(project),
+      body: JSON.stringify(submissionData),
     });
 
     const data = await response.json();

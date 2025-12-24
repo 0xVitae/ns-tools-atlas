@@ -5,8 +5,8 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import { EcosystemProject, CategoryType } from "@/types/ecosystem";
-import { CATEGORIES, CATEGORY_COLORS } from "@/data/ecosystemData";
+import { EcosystemProject, Category } from "@/types/ecosystem";
+import { buildCategoriesFromProjects, getCategoryColor, getCategoryName } from "@/data/ecosystemData";
 import { ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/hover-card";
 import ActionSearchBar, {
   Action,
+  ActionSearchBarRef,
 } from "@/components/kokonutui/action-search-bar";
 import { AddProjectForm } from "./AddProjectForm";
 
@@ -49,7 +50,7 @@ const calculateBoxSize = (projectCount: number) => {
 
 // Simple column-based layout algorithm
 const calculateLayout = (
-  categories: { id: CategoryType; name: string }[],
+  categories: Category[],
   projectsByCategory: Record<string, EcosystemProject[]>
 ) => {
   const layout: Record<
@@ -120,6 +121,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const searchBarRef = useRef<ActionSearchBarRef>(null);
 
   // Use refs for transform to avoid re-renders during pan/zoom
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
@@ -131,6 +133,11 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   const [displayScale, setDisplayScale] = useState(100);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
+  // Build dynamic categories from projects data
+  const categories = useMemo(() => {
+    return buildCategoriesFromProjects(projects);
+  }, [projects]);
 
   // Group projects by category
   const projectsByCategory = useMemo(() => {
@@ -144,7 +151,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   // Convert projects to search actions
   const searchActions: Action[] = useMemo(() => {
     return projects.map((project) => {
-      const category = CATEGORIES.find((c) => c.id === project.category);
       return {
         id: project.id,
         label: project.name,
@@ -154,14 +160,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           <div
             className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
             style={{
-              backgroundColor: `${CATEGORY_COLORS[project.category]}20`,
-              color: CATEGORY_COLORS[project.category],
+              backgroundColor: `${getCategoryColor(project.category)}20`,
+              color: getCategoryColor(project.category),
             }}
           >
             {project.name.slice(0, 2).toUpperCase()}
           </div>
         ),
-        end: category?.name || project.category,
+        end: getCategoryName(project.category),
       };
     });
   }, [projects]);
@@ -172,8 +178,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     canvasWidth,
     canvasHeight,
   } = useMemo(() => {
-    return calculateLayout(CATEGORIES, projectsByCategory);
-  }, [projectsByCategory]);
+    return calculateLayout(categories, projectsByCategory);
+  }, [categories, projectsByCategory]);
 
   // Apply transform directly to DOM (no React re-render)
   const applyTransform = useCallback(() => {
@@ -213,7 +219,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
   // Get colors based on category (with fallback for new categories)
   const getCategoryProjectColors = (category: string) => {
-    const baseColor = CATEGORY_COLORS[category as CategoryType] || "#6366f1"; // Default to indigo
+    const baseColor = getCategoryColor(category);
     // Parse the hex color and create lighter/darker variants
     const hex = baseColor.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
@@ -509,6 +515,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return () => container.removeEventListener("wheel", wheelHandler);
   }, [applyTransform]);
 
+  // Cmd+K to focus search bar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchBarRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-white overflow-hidden">
       {/* Top Bar */}
@@ -542,6 +561,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
           {/* Search Bar */}
           <ActionSearchBar
+            ref={searchBarRef}
             actions={searchActions}
             placeholder="Find Projects"
             onSelect={handleSearchSelect}
@@ -651,13 +671,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
           {/* Category Boxes - Dynamic Layout */}
           {Object.entries(dynamicLayout).map(([categoryId, boxLayout]) => {
-            const category = CATEGORIES.find((c) => c.id === categoryId);
-            const categoryName =
-              category?.name ||
-              categoryId
-                .split("-")
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(" ");
+            const category = categories.find((c) => c.id === categoryId);
+            const categoryName = category?.name || getCategoryName(categoryId);
             const categoryProjects = projectsByCategory[categoryId] || [];
 
             return (
@@ -702,7 +717,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                     >
                       <HoverCardTrigger asChild>
                         <div
-                          className="absolute flex flex-col items-center transition-all duration-300 select-none cursor-pointer"
+                          className="absolute flex flex-col items-center transition-all duration-150 ease-out select-none cursor-pointer"
                           style={{
                             left: pos.x,
                             top: pos.y,
@@ -729,7 +744,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                           }}
                         >
                           <div
-                            className="rounded-lg flex items-center justify-center font-bold cursor-pointer transition-all duration-300"
+                            className="rounded-lg flex items-center justify-center font-bold cursor-pointer transition-all duration-150 ease-out overflow-hidden"
                             style={{
                               width: displaySize,
                               height: displaySize * 0.72,
@@ -748,10 +763,18 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                                 : "none",
                             }}
                           >
-                            {project.emoji || getInitials(project.name)}
+                            {project.imageUrl ? (
+                              <img
+                                src={project.imageUrl}
+                                alt={project.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              project.emoji || getInitials(project.name)
+                            )}
                           </div>
                           <div
-                            className="mt-1 text-center leading-tight truncate transition-all duration-300"
+                            className="mt-1 text-center leading-tight truncate transition-all duration-150 ease-out"
                             style={{
                               fontSize: Math.max(9, displaySize * 0.18),
                               maxWidth: displaySize + 20,
@@ -773,20 +796,28 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         sideOffset={12}
                       >
                         <div className="flex flex-col gap-3">
-                          {/* Header with emoji/initials and name */}
+                          {/* Header with emoji/initials/logo and name */}
                           <div className="flex items-center gap-3">
                             <div
-                              className="rounded-lg flex items-center justify-center font-bold shrink-0"
+                              className="rounded-lg flex items-center justify-center font-bold shrink-0 overflow-hidden"
                               style={{
-                                width: 40,
-                                height: 32,
+                                width: 56,
+                                height: 48,
                                 backgroundColor: colors.bg,
                                 color: colors.text,
                                 border: `2px solid ${colors.border}`,
-                                fontSize: project.emoji ? 18 : 12,
+                                fontSize: project.emoji ? 28 : 16,
                               }}
                             >
-                              {project.emoji || getInitials(project.name)}
+                              {project.imageUrl ? (
+                                <img
+                                  src={project.imageUrl}
+                                  alt={project.name}
+                                  className="w-full h-full object-contain p-1"
+                                />
+                              ) : (
+                                project.emoji || getInitials(project.name)
+                              )}
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span className="font-semibold text-sm truncate">
@@ -825,14 +856,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             </a>
                           )}
 
-                          {/* Image if available */}
-                          {project.imageUrl && (
-                            <img
-                              src={project.imageUrl}
-                              alt={project.name}
-                              className="w-full h-24 object-contain rounded border bg-muted/30"
-                            />
-                          )}
                         </div>
                       </HoverCardContent>
                     </HoverCard>
