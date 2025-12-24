@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { EcosystemProject, Category } from "@/types/ecosystem";
 import {
   buildCategoriesFromProjects,
   getCategoryColor,
   getCategoryName,
+  generateProjectSlug,
 } from "@/data/ecosystemData";
-import { ExternalLink, BookOpen, ChevronRight, Search, Plus, X } from "lucide-react";
+import { ExternalLink, BookOpen, ChevronRight, Search, X, LayoutGrid } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Drawer,
@@ -19,6 +21,9 @@ interface MobileProjectListProps {
   projects: EcosystemProject[];
   onAddProject: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
+  showViewToggle?: boolean;
+  viewMode?: "canvas" | "list";
+  onViewModeChange?: (mode: "canvas" | "list") => void;
 }
 
 // Get colors based on category
@@ -254,6 +259,8 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   projects,
   onAddProject,
   isSubmitting,
+  showViewToggle,
+  onViewModeChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState<EcosystemProject | null>(null);
@@ -310,6 +317,48 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
     }
   }, [sortedCategoryIds, expandedCategories.size]);
 
+  // Select a project and update the URL hash
+  const selectProject = useCallback(
+    (project: EcosystemProject | null) => {
+      setSelectedProject(project);
+      if (project) {
+        const slug = generateProjectSlug(project.name);
+        history.replaceState(null, "", `#${slug}`);
+      } else {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    },
+    []
+  );
+
+  // Find project by URL hash slug
+  const findProjectBySlug = useCallback(
+    (slug: string): EcosystemProject | undefined => {
+      return projects.find((p) => generateProjectSlug(p.name) === slug);
+    },
+    [projects]
+  );
+
+  // Handle URL hash on mount and hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove the # prefix
+      if (hash) {
+        const project = findProjectBySlug(hash);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    };
+
+    // Handle initial hash on mount
+    handleHashChange();
+
+    // Listen for hash changes (browser back/forward)
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [findProjectBySlug]);
+
   return (
     <div className="min-h-screen bg-gray-50/80 pb-safe">
       {/* Fixed Header */}
@@ -335,13 +384,28 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
               </div>
             </div>
 
-            {/* Add Project Button */}
-            <AddProjectForm
-              onAddProject={onAddProject}
-              isSubmitting={isSubmitting}
-              categories={categories}
-              isMobile={true}
-            />
+            <div className="flex items-center gap-2">
+              {/* View Toggle - always show if handler provided */}
+              {onViewModeChange && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 rounded-full border-gray-200"
+                  onClick={() => onViewModeChange("canvas")}
+                  title="Switch to canvas view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              )}
+
+              {/* Add Project Button */}
+              <AddProjectForm
+                onAddProject={onAddProject}
+                isSubmitting={isSubmitting}
+                categories={categories}
+                isMobile={!showViewToggle}
+              />
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -418,7 +482,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                         <ProjectCard
                           project={project}
                           colors={colors}
-                          onClick={() => setSelectedProject(project)}
+                          onClick={() => selectProject(project)}
                         />
                       </div>
                     ))}
@@ -446,7 +510,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
       <ProjectDetailDrawer
         project={selectedProject}
         open={!!selectedProject}
-        onClose={() => setSelectedProject(null)}
+        onClose={() => selectProject(null)}
         categories={categories}
       />
     </div>

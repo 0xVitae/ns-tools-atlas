@@ -13,13 +13,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, LayoutGrid, List } from "lucide-react";
 
 const Index = () => {
   const { data: projects = [], isLoading, error } = useProjects();
   const submitMutation = useSubmitProject();
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const isMobile = useIsMobile();
+  // Default to list view on mobile, canvas on desktop
+  const [viewMode, setViewMode] = useState<"canvas" | "list">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "list" : "canvas"
+  );
 
   const handleAddProject = async (newProject: Omit<EcosystemProject, "id">) => {
     const result = await submitMutation.mutateAsync(newProject);
@@ -57,19 +61,27 @@ const Index = () => {
     );
   }
 
+  // Determine which view to show - simply respect viewMode
+  const showListView = viewMode === "list";
+
   return (
     <>
-      {isMobile ? (
+      {showListView ? (
         <MobileProjectList
           projects={projects}
           onAddProject={handleAddProject}
           isSubmitting={submitMutation.isPending}
+          showViewToggle={!isMobile}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       ) : (
         <FullCanvas
           projects={projects}
           onAddProject={handleAddProject}
           isSubmitting={submitMutation.isPending}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       )}
 
