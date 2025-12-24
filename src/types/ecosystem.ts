@@ -3,7 +3,9 @@ export interface EcosystemProject {
   name: string;
   category: CategoryType;
   imageUrl?: string;
+  emoji?: string;
   description?: string;
+  url?: string;
 }
 
 export type CategoryType =
@@ -15,7 +17,8 @@ export type CategoryType =
   | 'global-vcs'
   | 'accelerators'
   | 'corporate'
-  | 'public-entities';
+  | 'public-entities'
+  | 'transport';
 
 export interface Category {
   id: CategoryType;
