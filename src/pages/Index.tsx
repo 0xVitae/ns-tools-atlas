@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { FullCanvas } from "@/components/ecosystem/FullCanvas";
+import { MobileProjectList } from "@/components/ecosystem/MobileProjectList";
 import { EcosystemProject } from "@/types/ecosystem";
 import { useProjects, useSubmitProject } from "@/hooks/useProjects";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,6 +19,7 @@ const Index = () => {
   const { data: projects = [], isLoading, error } = useProjects();
   const submitMutation = useSubmitProject();
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleAddProject = async (newProject: Omit<EcosystemProject, "id">) => {
     const result = await submitMutation.mutateAsync(newProject);
@@ -56,11 +59,19 @@ const Index = () => {
 
   return (
     <>
-      <FullCanvas
-        projects={projects}
-        onAddProject={handleAddProject}
-        isSubmitting={submitMutation.isPending}
-      />
+      {isMobile ? (
+        <MobileProjectList
+          projects={projects}
+          onAddProject={handleAddProject}
+          isSubmitting={submitMutation.isPending}
+        />
+      ) : (
+        <FullCanvas
+          projects={projects}
+          onAddProject={handleAddProject}
+          isSubmitting={submitMutation.isPending}
+        />
+      )}
 
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent className="sm:max-w-md">
