@@ -1,33 +1,24 @@
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface CustomCategory {
+  id: string;           // generated slug from name (e.g., "tech-hubs")
+  name: string;         // user-provided display name
+  color: string;        // auto-assigned from available colors
+}
+
 export interface EcosystemProject {
   id: string;
   name: string;
-  category: CategoryType;
+  category: string;     // category ID (validated against categories.json)
   imageUrl?: string;
   emoji?: string;
   description?: string;
   url?: string;
-}
-
-export type CategoryType =
-  | 'networks'
-  | 'coworking'
-  | 'media-events'
-  | 'education'
-  | 'local-vcs'
-  | 'global-vcs'
-  | 'accelerators'
-  | 'corporate'
-  | 'public-entities'
-  | 'transport';
-
-export interface Category {
-  id: CategoryType;
-  name: string;
-  color: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  customCategory?: CustomCategory;  // Present when suggesting a new category
 }
 
 export interface CanvasState {

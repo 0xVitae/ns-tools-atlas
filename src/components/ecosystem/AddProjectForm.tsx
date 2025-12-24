@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import EmojiPicker from "emoji-picker-react";
-import { EcosystemProject, CategoryType } from "@/types/ecosystem";
-import { CATEGORY_COLORS } from "@/data/ecosystemData";
-import { Plus, X, ImageIcon, Smile } from "lucide-react";
+import { EcosystemProject, CustomCategory } from "@/types/ecosystem";
+import { BASE_CATEGORIES, getColorForNewCategory, generateCategorySlug } from "@/data/ecosystemData";
+import { Plus, X, ImageIcon, Smile, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,18 +25,7 @@ interface AddProjectFormProps {
   isSubmitting?: boolean;
 }
 
-const CATEGORY_OPTIONS: { value: CategoryType; label: string }[] = [
-  { value: "networks", label: "Networks" },
-  { value: "coworking", label: "Coworking" },
-  { value: "media-events", label: "Media & Events" },
-  { value: "education", label: "Education" },
-  { value: "local-vcs", label: "Local VCs" },
-  { value: "global-vcs", label: "Global VCs" },
-  { value: "accelerators", label: "Accelerators" },
-  { value: "corporate", label: "Corporate" },
-  { value: "public-entities", label: "Public Entities" },
-  { value: "transport", label: "Transport" },
-];
+const CREATE_NEW_CATEGORY = "__create_new__";
 
 export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   onAddProject,
@@ -44,12 +33,28 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState<CategoryType | "">("");
+  const [formCategory, setFormCategory] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
   const [formUrl, setFormUrl] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formEmoji, setFormEmoji] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // New category creation state
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
+
+  // Compute the custom category object when creating new
+  const customCategory = useMemo<CustomCategory | undefined>(() => {
+    if (!isCreatingNewCategory || !newCategoryName.trim()) return undefined;
+    const name = newCategoryName.trim();
+    return {
+      id: generateCategorySlug(name),
+      name,
+      color: getColorForNewCategory(name),
+    };
+  }, [isCreatingNewCategory, newCategoryName]);
 
   const handleSubmit = () => {
     if (isSubmitting) return;
@@ -66,23 +71,48 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       toast.error("Please select a category");
       return;
     }
+    // Validate new category if creating new
+    if (isCreatingNewCategory) {
+      if (!newCategoryName.trim()) {
+        toast.error("Please enter a name for the new category");
+        return;
+      }
+      // Check for collision with existing categories
+      const existingIds = BASE_CATEGORIES.map(c => c.id);
+      if (customCategory && existingIds.includes(customCategory.id)) {
+        toast.error("This category already exists. Please select it from the list.");
+        return;
+      }
+      // Check for empty slug (e.g., if name was all special chars)
+      if (!customCategory?.id) {
+        toast.error("Please enter a valid category name with letters or numbers");
+        return;
+      }
+    }
     if (!formDescription.trim()) {
       toast.error("Please enter a description");
       return;
     }
 
+    // Determine the category to use
+    const categoryToSubmit = isCreatingNewCategory && customCategory
+      ? customCategory.id
+      : formCategory;
+
     onAddProject({
       name: formName.trim(),
-      category: formCategory,
+      category: categoryToSubmit,
       description: formDescription.trim() || undefined,
       url: formUrl.trim() || undefined,
       imageUrl: formImageUrl.trim() || undefined,
       emoji: formEmoji || undefined,
+      customCategory: isCreatingNewCategory ? customCategory : undefined,
     });
 
     // Reset form
     setFormName("");
     setFormCategory("");
+    setNewCategoryName("");
     setFormDescription("");
     setFormUrl("");
     setFormImageUrl("");
@@ -190,6 +220,29 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Image Preview */}
+              {formImageUrl.trim() && (
+                <div className="flex items-center justify-center p-3 bg-muted/30 rounded-lg border border-border/50">
+                  <img
+                    src={formImageUrl}
+                    alt="Logo preview"
+                    className="max-h-16 max-w-full object-contain rounded"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                    }}
+                    onLoad={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'block';
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.add('hidden');
+                    }}
+                  />
+                  <div className="hidden text-xs text-muted-foreground/60 flex items-center gap-1.5">
+                    <X className="h-3 w-3" />
+                    Failed to load image
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* STEP 2: Basic Info */}
@@ -221,27 +274,57 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               </label>
               <Select
                 value={formCategory}
-                onValueChange={(val) => setFormCategory(val as CategoryType)}
+                onValueChange={(val) => {
+                  setFormCategory(val);
+                  if (val !== CREATE_NEW_CATEGORY) {
+                    setNewCategoryName("");
+                  }
+                }}
               >
                 <SelectTrigger className="h-10 text-sm border-border/60 focus:border-foreground/30">
                   <SelectValue placeholder="Select a category *" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
+                  {BASE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2.5 h-2.5 rounded-full"
-                          style={{
-                            backgroundColor: CATEGORY_COLORS[opt.value],
-                          }}
+                          style={{ backgroundColor: cat.color }}
                         />
-                        <span className="text-sm">{opt.label}</span>
+                        <span className="text-sm">{cat.name}</span>
                       </div>
                     </SelectItem>
                   ))}
+                  {/* Divider */}
+                  <div className="h-px bg-border my-1" />
+                  {/* Create New Category Option */}
+                  <SelectItem value={CREATE_NEW_CATEGORY}>
+                    <div className="flex items-center gap-2 text-primary">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span className="text-sm font-medium">Create New Category</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* New Category Name Input */}
+              {isCreatingNewCategory && (
+                <div className="space-y-2 pt-2">
+                  <Input
+                    placeholder="Category name (e.g., Tech Hubs) *"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="h-9 text-sm font-medium placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                    autoFocus
+                  />
+                  {customCategory && (
+                    <p className="text-[10px] text-muted-foreground/60">
+                      Will be created as "{customCategory.id}" after approval
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* STEP 4: Description */}

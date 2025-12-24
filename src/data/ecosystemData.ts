@@ -1,36 +1,101 @@
-import { Category, CategoryType } from '@/types/ecosystem';
+import { Category, EcosystemProject } from '@/types/ecosystem';
+import categoriesData from './categories.json';
 
-export const CATEGORY_COLORS: Record<CategoryType, string> = {
-  'networks': '#3B82F6',
-  'coworking': '#A855F7',
-  'media-events': '#EC4899',
-  'education': '#10B981',
-  'local-vcs': '#F59E0B',
-  'global-vcs': '#F97316',
-  'accelerators': '#0EA5E9',
-  'corporate': '#8B5CF6',
-  'public-entities': '#22C55E',
-  'transport': '#EF4444',
-};
+// Base categories from JSON (bundled at build time)
+export const BASE_CATEGORIES: Category[] = categoriesData;
 
-export const CATEGORIES: Category[] = [
-  { id: 'networks', name: 'Networks', color: CATEGORY_COLORS['networks'], x: 20, y: 20, width: 200, height: 180 },
-  { id: 'coworking', name: 'Coworking', color: CATEGORY_COLORS['coworking'], x: 20, y: 210, width: 200, height: 160 },
-  { id: 'media-events', name: 'Media & Events', color: CATEGORY_COLORS['media-events'], x: 20, y: 380, width: 200, height: 200 },
-  { id: 'education', name: 'Education', color: CATEGORY_COLORS['education'], x: 20, y: 590, width: 200, height: 180 },
-  { id: 'local-vcs', name: 'Local VCs', color: CATEGORY_COLORS['local-vcs'], x: 240, y: 20, width: 260, height: 340 },
-  { id: 'corporate', name: 'Corporate', color: CATEGORY_COLORS['corporate'], x: 240, y: 370, width: 260, height: 160 },
-  { id: 'public-entities', name: 'Public Entities', color: CATEGORY_COLORS['public-entities'], x: 240, y: 540, width: 260, height: 110 },
-  { id: 'global-vcs', name: 'Global VCs', color: CATEGORY_COLORS['global-vcs'], x: 520, y: 20, width: 220, height: 280 },
-  { id: 'accelerators', name: 'Accelerators', color: CATEGORY_COLORS['accelerators'], x: 520, y: 310, width: 220, height: 340 },
-  { id: 'transport', name: 'Transport', color: CATEGORY_COLORS['transport'], x: 240, y: 660, width: 260, height: 110 },
+// For backwards compatibility
+export const CATEGORIES = BASE_CATEGORIES;
+
+// Colors available for new custom categories (distinct from existing category colors)
+export const CUSTOM_CATEGORY_COLORS: string[] = [
+  '#6366F1', // indigo
+  '#14B8A6', // teal
+  '#F43F5E', // rose
+  '#84CC16', // lime
+  '#06B6D4', // cyan
+  '#D946EF', // fuchsia
+  '#FB923C', // orange (lighter)
+  '#4ADE80', // green (lighter)
+  '#38BDF8', // sky (lighter)
+  '#A78BFA', // violet (lighter)
 ];
 
-// INITIAL_PROJECTS has been migrated to Google Sheets.
-// Copy this data to your Google Sheet "approved" tab if starting fresh.
-// Sheet columns: id | name | category | description | url | imageUrl | emoji | addedAt
-//
-// Example data for migration:
-// n1, NS Tech Alliance, networks, Provincial tech network, , , ,
-// n2, Startup Canada, networks, National startup community, , , ,
-// ... (see git history for full list)
+/**
+ * Convert a category slug to a display name
+ * "tech-hubs" -> "Tech Hubs"
+ */
+function formatCategoryName(slug: string): string {
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Get the next available color for a new category
+ * Uses a simple hash of the category name to pick a consistent color
+ */
+export function getColorForNewCategory(categoryId: string): string {
+  // Simple hash function to get consistent color for same name
+  let hash = 0;
+  for (let i = 0; i < categoryId.length; i++) {
+    hash = ((hash << 5) - hash) + categoryId.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  const index = Math.abs(hash) % CUSTOM_CATEGORY_COLORS.length;
+  return CUSTOM_CATEGORY_COLORS[index];
+}
+
+/**
+ * Build complete category list dynamically from projects data
+ * Merges base categories with any new categories found in projects
+ */
+export function buildCategoriesFromProjects(projects: EcosystemProject[]): Category[] {
+  // Start with base categories
+  const categoryMap = new Map<string, Category>();
+  BASE_CATEGORIES.forEach(c => categoryMap.set(c.id, c));
+
+  // Add any new categories found in projects
+  projects.forEach(p => {
+    if (!categoryMap.has(p.category)) {
+      categoryMap.set(p.category, {
+        id: p.category,
+        name: formatCategoryName(p.category),
+        color: getColorForNewCategory(p.category),
+      });
+    }
+  });
+
+  return Array.from(categoryMap.values());
+}
+
+/**
+ * Get the color for a category by ID
+ * Falls back to hash-based color for unknown categories
+ */
+export function getCategoryColor(categoryId: string): string {
+  const cat = BASE_CATEGORIES.find(c => c.id === categoryId);
+  return cat?.color ?? getColorForNewCategory(categoryId);
+}
+
+/**
+ * Get the display name for a category by ID
+ * Falls back to formatted slug for unknown categories
+ */
+export function getCategoryName(categoryId: string): string {
+  const cat = BASE_CATEGORIES.find(c => c.id === categoryId);
+  return cat?.name ?? formatCategoryName(categoryId);
+}
+
+/**
+ * Generate a URL-safe slug from a category name
+ */
+export function generateCategorySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}

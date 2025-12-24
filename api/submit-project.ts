@@ -7,12 +7,6 @@ const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
 const PENDING_SHEET_NAME = 'pending';
 
-const VALID_CATEGORIES = [
-  'networks', 'coworking', 'media-events', 'education',
-  'local-vcs', 'global-vcs', 'accelerators', 'corporate',
-  'public-entities', 'transport'
-];
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
   if (req.method !== 'POST') {
@@ -26,14 +20,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { name, category, description, url, imageUrl, emoji } = req.body;
+    const { name, category, description, url, imageUrl, emoji, customCategoryName, customCategoryColor } = req.body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ error: 'Name is required' });
     }
-    if (!category || !VALID_CATEGORIES.includes(category)) {
-      return res.status(400).json({ error: 'Valid category is required' });
+    // Category must be a non-empty string (can be existing or new custom category)
+    if (!category || typeof category !== 'string' || category.trim().length === 0) {
+      return res.status(400).json({ error: 'Category is required' });
     }
 
     // Initialize Google Sheets client
@@ -52,6 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const submittedAt = new Date().toISOString();
 
     // Append row to pending sheet
+    // If it's a new category, prefix with ⭐ NEW: so admin can easily spot it
+    const categoryValue = customCategoryName ? `⭐ NEW: ${category}` : category;
+
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${PENDING_SHEET_NAME}!A:H`,
@@ -60,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         values: [[
           id,
           name.trim(),
-          category,
+          categoryValue,
           description?.trim() || '',
           url?.trim() || '',
           imageUrl || '',
