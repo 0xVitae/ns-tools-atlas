@@ -963,8 +963,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         }`}
                         side="top"
                         sideOffset={12}
+                        avoidCollisions={false}
                       >
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2">
                           {/* Header with emoji/initials/logo and name */}
                           <div className="flex items-center gap-3">
                             <div
@@ -1038,6 +1039,28 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               </a>
                             )}
                           </div>
+
+                          {/* NS Profile Links */}
+                          {project.nsProfileUrls && project.nsProfileUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 -mt-1">
+                              {project.nsProfileUrls.map((profileUrl, idx) => {
+                                // Extract username from URL like https://ns.com/alexignatov
+                                const username = profileUrl.split('/').pop() || profileUrl;
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={profileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="text-primary">@{username}</span>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           {/* Product Images Carousel */}
                           {project.productImages &&

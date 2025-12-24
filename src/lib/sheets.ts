@@ -61,13 +61,18 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
   // Skip header row (index 0)
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    const [id, name, category, description, url, guideUrl, imageUrl, emoji, productImagesRaw] = values;
+    const [id, name, category, description, url, guideUrl, nsProfileUrlsRaw, imageUrl, emoji, productImagesRaw] = values;
 
     // Warn about unknown categories but don't skip them
     // This allows custom categories that have been added to the JSON
     if (!validCategoryIds.includes(category)) {
       console.warn(`Unknown category "${category}" for project "${name}" - may be a custom category`);
     }
+
+    // Parse nsProfileUrls from pipe-separated string (e.g., "url1|url2|url3")
+    const nsProfileUrls = nsProfileUrlsRaw
+      ? nsProfileUrlsRaw.split('|').map(s => s.trim()).filter(Boolean)
+      : undefined;
 
     // Parse productImages from pipe-separated string (e.g., "img1.jpg|img2.jpg|img3.jpg")
     const productImages = productImagesRaw
@@ -82,6 +87,7 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
         description: description || undefined,
         url: url || undefined,
         guideUrl: guideUrl || undefined,
+        nsProfileUrls: nsProfileUrls && nsProfileUrls.length > 0 ? nsProfileUrls : undefined,
         imageUrl: imageUrl || undefined,
         emoji: emoji || undefined,
         productImages: productImages && productImages.length > 0 ? productImages : undefined,
@@ -105,6 +111,8 @@ export async function submitProject(
       ...project,
       // Convert productImages array to pipe-separated string for sheets
       productImages: project.productImages?.join('|') || undefined,
+      // Convert nsProfileUrls array to pipe-separated string for sheets
+      nsProfileUrls: project.nsProfileUrls?.join('|') || undefined,
       // Flatten custom category for easier handling in sheets
       customCategoryName: project.customCategory?.name,
       customCategoryColor: project.customCategory?.color,
