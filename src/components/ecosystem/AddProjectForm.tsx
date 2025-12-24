@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from "react";
 import EmojiPicker from "emoji-picker-react";
 import { EcosystemProject, CustomCategory } from "@/types/ecosystem";
-import { BASE_CATEGORIES, getColorForNewCategory, generateCategorySlug } from "@/data/ecosystemData";
-import { Plus, X, ImageIcon, Smile, Sparkles } from "lucide-react";
+import {
+  BASE_CATEGORIES,
+  getColorForNewCategory,
+  generateCategorySlug,
+} from "@/data/ecosystemData";
+import { Plus, X, ImageIcon, Smile, Sparkles, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,14 +40,44 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   const [formCategory, setFormCategory] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
   const [formUrl, setFormUrl] = useState("");
+  const [formGuideUrl, setFormGuideUrl] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formEmoji, setFormEmoji] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Product images gallery state (max 3)
+  const [formProductImages, setFormProductImages] = useState<string[]>([]);
+  const [newProductImageUrl, setNewProductImageUrl] = useState("");
 
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
 
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
+  const MAX_PRODUCT_IMAGES = 3;
+
+  // Helper to add a product image
+  const handleAddProductImage = () => {
+    const url = newProductImageUrl.trim();
+    if (!url) {
+      toast.error("Please enter an image URL");
+      return;
+    }
+    if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
+      toast.error(`Maximum ${MAX_PRODUCT_IMAGES} images allowed`);
+      return;
+    }
+    if (formProductImages.includes(url)) {
+      toast.error("This image is already added");
+      return;
+    }
+    setFormProductImages([...formProductImages, url]);
+    setNewProductImageUrl("");
+  };
+
+  // Helper to remove a product image
+  const handleRemoveProductImage = (index: number) => {
+    setFormProductImages(formProductImages.filter((_, i) => i !== index));
+  };
 
   // Compute the custom category object when creating new
   const customCategory = useMemo<CustomCategory | undefined>(() => {
@@ -78,14 +112,18 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         return;
       }
       // Check for collision with existing categories
-      const existingIds = BASE_CATEGORIES.map(c => c.id);
+      const existingIds = BASE_CATEGORIES.map((c) => c.id);
       if (customCategory && existingIds.includes(customCategory.id)) {
-        toast.error("This category already exists. Please select it from the list.");
+        toast.error(
+          "This category already exists. Please select it from the list."
+        );
         return;
       }
       // Check for empty slug (e.g., if name was all special chars)
       if (!customCategory?.id) {
-        toast.error("Please enter a valid category name with letters or numbers");
+        toast.error(
+          "Please enter a valid category name with letters or numbers"
+        );
         return;
       }
     }
@@ -95,17 +133,21 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     }
 
     // Determine the category to use
-    const categoryToSubmit = isCreatingNewCategory && customCategory
-      ? customCategory.id
-      : formCategory;
+    const categoryToSubmit =
+      isCreatingNewCategory && customCategory
+        ? customCategory.id
+        : formCategory;
 
     onAddProject({
       name: formName.trim(),
       category: categoryToSubmit,
       description: formDescription.trim() || undefined,
       url: formUrl.trim() || undefined,
+      guideUrl: formGuideUrl.trim() || undefined,
       imageUrl: formImageUrl.trim() || undefined,
       emoji: formEmoji || undefined,
+      productImages:
+        formProductImages.length > 0 ? formProductImages : undefined,
       customCategory: isCreatingNewCategory ? customCategory : undefined,
     });
 
@@ -115,8 +157,11 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setNewCategoryName("");
     setFormDescription("");
     setFormUrl("");
+    setFormGuideUrl("");
     setFormImageUrl("");
     setFormEmoji(null);
+    setFormProductImages([]);
+    setNewProductImageUrl("");
     setShowEmojiPicker(false);
     setIsFormOpen(false);
   };
@@ -229,12 +274,16 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     alt="Logo preview"
                     className="max-h-16 max-w-full object-contain rounded"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      (e.target as HTMLImageElement).style.display = "none";
+                      (
+                        e.target as HTMLImageElement
+                      ).nextElementSibling?.classList.remove("hidden");
                     }}
                     onLoad={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'block';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.add('hidden');
+                      (e.target as HTMLImageElement).style.display = "block";
+                      (
+                        e.target as HTMLImageElement
+                      ).nextElementSibling?.classList.add("hidden");
                     }}
                   />
                   <div className="hidden text-xs text-muted-foreground/60 flex items-center gap-1.5">
@@ -264,6 +313,13 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   onChange={(e) => setFormUrl(e.target.value)}
                   className="h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
                 />
+                <Input
+                  type="url"
+                  placeholder="How to Guide (recommended)"
+                  value={formGuideUrl}
+                  onChange={(e) => setFormGuideUrl(e.target.value)}
+                  className="h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                />
               </div>
             </div>
 
@@ -281,7 +337,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   }
                 }}
               >
-                <SelectTrigger className="h-10 text-sm border-border/60 focus:border-foreground/30">
+                <SelectTrigger className="h-10 text-sm border-border/60 focus:border-foreground/30 data-[placeholder]:text-muted-foreground/50">
                   <SelectValue placeholder="Select a category *" />
                 </SelectTrigger>
                 <SelectContent>
@@ -302,7 +358,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   <SelectItem value={CREATE_NEW_CATEGORY}>
                     <div className="flex items-center gap-2 text-primary">
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span className="text-sm font-medium">Create New Category</span>
+                      <span className="text-sm font-medium">
+                        Create New Category
+                      </span>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -342,6 +400,120 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               {formDescription && (
                 <p className="text-[10px] text-muted-foreground/50 text-right">
                   {formDescription.length}/160
+                </p>
+              )}
+            </div>
+
+            {/* STEP 5: Product Images */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  5. Tool Images
+                </label>
+                <span className="text-[10px] text-muted-foreground/50">
+                  {formProductImages.length}/{MAX_PRODUCT_IMAGES}
+                </span>
+              </div>
+
+              {/* URL Input Row */}
+              {formProductImages.length < MAX_PRODUCT_IMAGES && (
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      <Images className="h-4 w-4 text-muted-foreground/50" />
+                    </div>
+                    <Input
+                      type="url"
+                      placeholder="Paste image URL..."
+                      value={newProductImageUrl}
+                      onChange={(e) => setNewProductImageUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddProductImage();
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const pastedText = e.clipboardData
+                          .getData("text")
+                          .trim();
+                        if (
+                          pastedText &&
+                          (pastedText.startsWith("http://") ||
+                            pastedText.startsWith("https://"))
+                        ) {
+                          e.preventDefault();
+                          if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
+                            toast.error(
+                              `Maximum ${MAX_PRODUCT_IMAGES} images allowed`
+                            );
+                            return;
+                          }
+                          if (formProductImages.includes(pastedText)) {
+                            toast.error("This image is already added");
+                            return;
+                          }
+                          setFormProductImages([
+                            ...formProductImages,
+                            pastedText,
+                          ]);
+                        }
+                      }}
+                      className="h-9 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAddProductImage}
+                    className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Image Gallery Grid */}
+              {formProductImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {formProductImages.map((url, index) => (
+                    <div
+                      key={index}
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-border/50 bg-muted/20 animate-in fade-in-0 zoom-in-95 duration-200"
+                    >
+                      <img
+                        src={url}
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21,15 16,10 5,21'%3E%3C/polyline%3E%3C/svg%3E";
+                        }}
+                      />
+                      {/* Hover overlay with delete */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProductImage(index)}
+                          className="w-7 h-7 rounded-full bg-white/90 text-foreground flex items-center justify-center hover:bg-white transition-colors shadow-sm"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {/* Index badge */}
+                      <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] font-medium flex items-center justify-center backdrop-blur-sm">
+                        {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state hint */}
+              {formProductImages.length === 0 && (
+                <p className="text-[10px] text-muted-foreground/40 text-center py-1">
+                  Add up to 3 product screenshots (optional)
                 </p>
               )}
             </div>
