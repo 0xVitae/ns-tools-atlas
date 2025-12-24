@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import EmojiPicker from "emoji-picker-react";
-import { EcosystemProject, CustomCategory } from "@/types/ecosystem";
+import { EcosystemProject, CustomCategory, Category } from "@/types/ecosystem";
 import {
   BASE_CATEGORIES,
   getColorForNewCategory,
@@ -27,6 +27,7 @@ import { toast } from "sonner";
 interface AddProjectFormProps {
   onAddProject: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
+  categories: Category[];
 }
 
 const CREATE_NEW_CATEGORY = "__create_new__";
@@ -34,6 +35,7 @@ const CREATE_NEW_CATEGORY = "__create_new__";
 export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   onAddProject,
   isSubmitting,
+  categories,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState("");
@@ -500,7 +502,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     <SelectValue placeholder="Select a category *" />
                   </SelectTrigger>
                   <SelectContent>
-                    {BASE_CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         <div className="flex items-center gap-2">
                           <div
@@ -558,11 +560,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                   className="min-h-[60px] resize-none text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
                   maxLength={160}
                 />
-                {formDescription && (
-                  <p className="text-[10px] text-muted-foreground/50 text-right">
-                    {formDescription.length}/160
-                  </p>
-                )}
               </div>
             )}
 
@@ -726,6 +723,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               }`}
               disabled={
                 isSubmitting ||
+                !allComplete ||
                 !allProductImagesValid ||
                 (formImageUrl.trim() && logoImageValid === false)
               }

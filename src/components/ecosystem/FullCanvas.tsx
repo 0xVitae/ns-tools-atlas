@@ -6,8 +6,20 @@ import React, {
   useMemo,
 } from "react";
 import { EcosystemProject, Category } from "@/types/ecosystem";
-import { buildCategoriesFromProjects, getCategoryColor, getCategoryName } from "@/data/ecosystemData";
-import { ZoomIn, ZoomOut, RotateCcw, ExternalLink, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  buildCategoriesFromProjects,
+  getCategoryColor,
+  getCategoryName,
+} from "@/data/ecosystemData";
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  ExternalLink,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -27,7 +39,10 @@ interface FullCanvasProps {
 }
 
 // Product Image Carousel Component with prev/next buttons
-const ProductImageCarousel: React.FC<{ images: string[]; projectName: string }> = ({ images, projectName }) => {
+const ProductImageCarousel: React.FC<{
+  images: string[];
+  projectName: string;
+}> = ({ images, projectName }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const goToPrev = (e: React.MouseEvent) => {
@@ -85,7 +100,9 @@ const ProductImageCarousel: React.FC<{ images: string[]; projectName: string }> 
                   setCurrentIndex(idx);
                 }}
                 className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  idx === currentIndex ? 'bg-primary' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  idx === currentIndex
+                    ? "bg-primary"
+                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
                 }`}
               />
             ))}
@@ -128,11 +145,12 @@ const calculateLayout = (
     { x: number; y: number; width: number; height: number }
   > = {};
 
-  // Get all categories that have projects or are in CATEGORIES
-  const allCategoryIds = new Set([
-    ...categories.map((c) => c.id),
-    ...Object.keys(projectsByCategory),
-  ]);
+  // Only include categories that have at least one project
+  const allCategoryIds = new Set(
+    Object.keys(projectsByCategory).filter(
+      (categoryId) => projectsByCategory[categoryId]?.length > 0
+    )
+  );
 
   // Calculate sizes for each category
   const categoryData = Array.from(allCategoryIds).map((id) => {
@@ -263,15 +281,11 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   useEffect(() => {
     const centerCanvas = () => {
       if (typeof window !== "undefined") {
-        const scale = Math.min(
-          0.9,
-          (window.innerWidth - 100) / canvasWidth,
-          (window.innerHeight - 100) / canvasHeight
-        );
+        const scale = 1;
         const x = (window.innerWidth - canvasWidth * scale) / 2;
         const y = (window.innerHeight - canvasHeight * scale) / 2;
         transformRef.current = { x, y, scale };
-        setDisplayScale(Math.round(scale * 100));
+        setDisplayScale(100);
         applyTransform();
       }
     };
@@ -525,16 +539,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   }, [applyTransform]);
 
   const resetView = useCallback(() => {
-    const scale = Math.min(
-      0.9,
-      (window.innerWidth - 100) / canvasWidth,
-      (window.innerHeight - 100) / canvasHeight
-    );
+    const scale = 1;
     const x = (window.innerWidth - canvasWidth * scale) / 2;
     const y = (window.innerHeight - canvasHeight * scale) / 2;
     transformRef.current = { x, y, scale };
     applyTransform();
-    setDisplayScale(Math.round(scale * 100));
+    setDisplayScale(100);
   }, [applyTransform, canvasWidth, canvasHeight]);
 
   // Cleanup RAF on unmount
@@ -604,25 +614,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       <div className="absolute top-4 left-4 z-30">
         <div className="bg-white rounded-xl px-5 py-3 shadow-lg border border-foreground/10 flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <svg
-              width="30"
-              height="20"
-              viewBox="0 0 30 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-foreground"
-            >
-              <path
-                d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
-                fill="currentColor"
-              />
-            </svg>
+            <img
+              src="/favicon.png"
+              alt="NS Tools Atlas"
+              width="24"
+              height="24"
+              className="rounded"
+            />
             <div>
               <h1 className="text-sm font-bold text-foreground leading-tight">
                 NS Tools Atlas
               </h1>
               <p className="text-[10px] text-muted-foreground">
-                {projects.length} organizations
+                {projects.length} projects
               </p>
             </div>
           </div>
@@ -678,6 +682,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         <AddProjectForm
           onAddProject={onAddProject}
           isSubmitting={isSubmitting}
+          categories={categories}
         />
       </div>
 
@@ -861,7 +866,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent
-                        className={`z-50 ${project.productImages && project.productImages.length > 0 ? 'w-96' : 'w-72'}`}
+                        className={`z-50 ${
+                          project.productImages &&
+                          project.productImages.length > 0
+                            ? "w-96"
+                            : "w-72"
+                        }`}
                         side="top"
                         sideOffset={12}
                       >
@@ -941,13 +951,13 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                           </div>
 
                           {/* Product Images Carousel */}
-                          {project.productImages && project.productImages.length > 0 && (
-                            <ProductImageCarousel
-                              images={project.productImages}
-                              projectName={project.name}
-                            />
-                          )}
-
+                          {project.productImages &&
+                            project.productImages.length > 0 && (
+                              <ProductImageCarousel
+                                images={project.productImages}
+                                projectName={project.name}
+                              />
+                            )}
                         </div>
                       </HoverCardContent>
                     </HoverCard>
