@@ -260,18 +260,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       };
     });
 
-    // Create and run force simulation - collision only, no centering
+    // Create and run force simulation - weaker collision keeps more randomness
     const simulation = forceSimulation<ForceNode>(nodes)
       .force(
         "collide",
         forceCollide<ForceNode>((d) => d.radius)
-          .strength(1)
-          .iterations(10)
+          .strength(0.4)
+          .iterations(3)
       )
+      .velocityDecay(0.6)
       .stop();
 
-    // Run simulation to completion
-    for (let i = 0; i < 500; i++) {
+    // Run just enough iterations to resolve major overlaps
+    for (let i = 0; i < 40; i++) {
       simulation.tick();
 
       // Constrain nodes to box bounds after each tick
@@ -351,44 +352,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     }
   }, []);
 
-  // Zoom handlers - use refs for immediate response
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-
-      // Cancel any pending animation frame
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-
-      rafIdRef.current = requestAnimationFrame(() => {
-        const delta = e.deltaY > 0 ? 0.97 : 1.03;
-        const newScale = Math.max(
-          0.5,
-          Math.min(2, transformRef.current.scale * delta)
-        );
-
-        // Zoom toward mouse position
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (rect) {
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-
-          const scaleChange = newScale / transformRef.current.scale;
-          transformRef.current.x =
-            mouseX - (mouseX - transformRef.current.x) * scaleChange;
-          transformRef.current.y =
-            mouseY - (mouseY - transformRef.current.y) * scaleChange;
-        }
-
-        transformRef.current.scale = newScale;
-        applyTransform();
-        setDisplayScale(Math.round(newScale * 100));
-      });
-    },
-    [applyTransform]
-  );
-
   const zoomIn = useCallback(() => {
     const newScale = Math.min(2, transformRef.current.scale * 1.15);
     transformRef.current.scale = newScale;
@@ -424,6 +387,45 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       }
     };
   }, []);
+
+  // Attach wheel listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        const delta = e.deltaY > 0 ? 0.97 : 1.03;
+        const newScale = Math.max(
+          0.5,
+          Math.min(2, transformRef.current.scale * delta)
+        );
+
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const scaleChange = newScale / transformRef.current.scale;
+        transformRef.current.x =
+          mouseX - (mouseX - transformRef.current.x) * scaleChange;
+        transformRef.current.y =
+          mouseY - (mouseY - transformRef.current.y) * scaleChange;
+
+        transformRef.current.scale = newScale;
+        applyTransform();
+        setDisplayScale(Math.round(newScale * 100));
+      });
+    };
+
+    container.addEventListener("wheel", wheelHandler, { passive: false });
+    return () => container.removeEventListener("wheel", wheelHandler);
+  }, [applyTransform]);
 
   return (
     <div className="fixed inset-0 bg-white overflow-hidden">
@@ -505,7 +507,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         <div
           ref={canvasRef}

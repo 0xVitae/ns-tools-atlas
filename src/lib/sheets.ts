@@ -42,7 +42,10 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
     return [];
   }
 
-  const response = await fetch(SHEETS_CSV_URL, {
+  // Add cache-busting parameter to bypass Google's cache
+  const urlWithCacheBuster = `${SHEETS_CSV_URL}${SHEETS_CSV_URL.includes('?') ? '&' : '?'}_cb=${Date.now()}`;
+
+  const response = await fetch(urlWithCacheBuster, {
     cache: 'no-store', // Always fetch fresh data
   });
 
