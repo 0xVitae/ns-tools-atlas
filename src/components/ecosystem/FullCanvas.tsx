@@ -117,11 +117,11 @@ const ProductImageCarousel: React.FC<{
 const PADDING = 40;
 const GAP = 24;
 const TITLE_HEIGHT = 90;
-const MIN_BOX_WIDTH = 240;
-const MIN_BOX_HEIGHT = 160;
-const CELL_WIDTH = 110; // Width per item cell
-const CELL_HEIGHT = 100; // Height per item cell (icon + label + spacing)
-const ITEMS_PER_ROW_BASE = 4; // Base items per row for width calculation
+const MIN_BOX_WIDTH = 180; // Smaller minimum for 1-2 items
+const MIN_BOX_HEIGHT = 140; // Smaller minimum height
+const CELL_WIDTH = 100; // Width per item cell
+const CELL_HEIGHT = 95; // Height per item cell (icon + label + spacing)
+const ITEMS_PER_ROW_BASE = 3; // 3 items per row for more vertical growth
 
 // Calculate box dimensions based on project count
 const calculateBoxSize = (projectCount: number) => {
@@ -164,7 +164,7 @@ const calculateLayout = (
 
   // Use 3 columns
   const numColumns = 3;
-  const columnWidths = [460, 460, 460];
+  const columnWidths = [300, 320, 300];
   const columnX = [
     PADDING,
     PADDING + columnWidths[0] + GAP,
@@ -334,110 +334,97 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return x - Math.floor(x);
   };
 
-  // Calculate all item positions for a category using grid-based layout with jitter
+  // Calculate positions using rejection sampling - try random positions until no collision
   const calculateCategoryPositions = (
     categoryProjects: EcosystemProject[],
     boxWidth: number,
     boxHeight: number,
-    _baseSize: number
+    baseSize: number
   ): Record<string, { x: number; y: number }> => {
     if (categoryProjects.length === 0) return {};
 
-    const count = categoryProjects.length;
+    // Usable area bounds - minimal padding to maximize space
+    const padding = 10;
+    const topPadding = 35;
 
-    // Usable area bounds
-    const padding = 24;
-    const topPadding = 45;
-    const usableWidth = boxWidth - padding * 2;
-    const usableHeight = boxHeight - topPadding - padding;
+    // Minimum distance between item centers
+    // Card is baseSize wide, ~baseSize*0.72 tall, plus label (~20px) below
+    const cardWidth = baseSize;
+    const cardHeight = baseSize * 0.72 + 20; // card + label
+    const minDistance = Math.max(cardWidth, cardHeight) + 8; // small buffer
+
+    // Bounds for item centers
+    const halfWidth = cardWidth / 2;
+    const halfHeight = cardHeight / 2;
+    const minX = padding + halfWidth;
+    const maxX = boxWidth - padding - halfWidth;
+    const minY = topPadding + halfHeight;
+    const maxY = boxHeight - padding - halfHeight;
 
     const positions: Record<string, { x: number; y: number }> = {};
+    const placedPoints: { x: number; y: number }[] = [];
 
-    // For small counts (< 5), use scattered placement for organic look
-    if (count < 5) {
-      // Generate unique positions for each category based on project IDs
-      // Use the first project's ID as a category seed for variation
-      const categorySeed = categoryProjects.length > 0 ? hashString(categoryProjects[0].id) : 0;
-
-      // Base positions that ensure good spacing (corners and center regions)
-      const basePositions = [
-        { x: 0.25, y: 0.3 },
-        { x: 0.75, y: 0.3 },
-        { x: 0.25, y: 0.7 },
-        { x: 0.75, y: 0.7 },
-      ];
-
-      // Rotate/shuffle positions based on category seed for variety
-      const rotation = categorySeed % 4;
-      const shuffledPositions = [
-        ...basePositions.slice(rotation),
-        ...basePositions.slice(0, rotation),
-      ];
-
-      // Add category-level offset for more variation
-      const categoryOffsetX = (seededRandom(categorySeed) - 0.5) * 0.15;
-      const categoryOffsetY = (seededRandom(categorySeed + 100) - 0.5) * 0.15;
-
-      categoryProjects.forEach((project, index) => {
-        const base = shuffledPositions[index % shuffledPositions.length];
-        const seed = hashString(project.id);
-        // Per-item jitter for organic feel
-        const jitterX = (seededRandom(seed) - 0.5) * 0.08;
-        const jitterY = (seededRandom(seed + 1) - 0.5) * 0.08;
-
-        // Clamp final position to stay within bounds
-        const finalX = Math.max(0.15, Math.min(0.85, base.x + categoryOffsetX + jitterX));
-        const finalY = Math.max(0.15, Math.min(0.85, base.y + categoryOffsetY + jitterY));
-
-        positions[project.id] = {
-          x: padding + finalX * usableWidth,
-          y: topPadding + finalY * usableHeight,
-        };
-      });
-
-      return positions;
-    }
-
-    // For larger counts, use grid with jitter
-    const aspectRatio = usableWidth / usableHeight;
-    let cols = Math.ceil(Math.sqrt(count * aspectRatio));
-    let rows = Math.ceil(count / cols);
-
-    // Ensure we have enough cells
-    while (cols * rows < count) {
-      if (usableWidth / cols > usableHeight / rows) {
-        cols++;
-      } else {
-        rows++;
+    // Check if a point collides with any existing points
+    const hasCollision = (x: number, y: number): boolean => {
+      for (const pt of placedPoints) {
+        const dx = x - pt.x;
+        const dy = y - pt.y;
+        if (Math.sqrt(dx * dx + dy * dy) < minDistance) {
+          return true;
+        }
       }
-    }
+      return false;
+    };
 
-    // Calculate cell size
-    const cellWidth = usableWidth / cols;
-    const cellHeight = usableHeight / rows;
-
-    // Maximum jitter: 15% of cell size, but capped at 12px to prevent overlaps
-    // Items are ~80px wide, so jitter must be small enough that adjacent cells don't collide
-    const maxJitter = Math.min(Math.min(cellWidth, cellHeight) * 0.15, 12);
-
-    categoryProjects.forEach((project, index) => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
-
-      // Center of grid cell
-      const centerX = padding + cellWidth * (col + 0.5);
-      const centerY = topPadding + cellHeight * (row + 0.5);
-
-      // Add deterministic jitter based on project ID
+    // Place each project
+    for (const project of categoryProjects) {
       const seed = hashString(project.id);
-      const jitterX = (seededRandom(seed) - 0.5) * maxJitter * 2;
-      const jitterY = (seededRandom(seed + 1) - 0.5) * maxJitter * 2;
+      let placed = false;
+      let x = 0, y = 0;
 
-      positions[project.id] = {
-        x: centerX + jitterX,
-        y: centerY + jitterY,
-      };
-    });
+      // Try up to 500 random positions
+      for (let attempt = 0; attempt < 500 && !placed; attempt++) {
+        // Generate deterministic random position based on project ID + attempt
+        x = minX + seededRandom(seed + attempt * 2) * Math.max(1, maxX - minX);
+        y = minY + seededRandom(seed + attempt * 2 + 1) * Math.max(1, maxY - minY);
+
+        if (!hasCollision(x, y)) {
+          placed = true;
+        }
+      }
+
+      // If still not placed after 500 attempts, find best available spot
+      if (!placed) {
+        let bestX = (minX + maxX) / 2;
+        let bestY = (minY + maxY) / 2;
+        let bestMinDist = 0;
+
+        // Try 100 more positions and pick the one with maximum distance from others
+        for (let i = 0; i < 100; i++) {
+          const testX = minX + seededRandom(seed + 1000 + i * 2) * Math.max(1, maxX - minX);
+          const testY = minY + seededRandom(seed + 1000 + i * 2 + 1) * Math.max(1, maxY - minY);
+
+          let minDist = Infinity;
+          for (const pt of placedPoints) {
+            const dx = testX - pt.x;
+            const dy = testY - pt.y;
+            minDist = Math.min(minDist, Math.sqrt(dx * dx + dy * dy));
+          }
+
+          if (minDist > bestMinDist) {
+            bestMinDist = minDist;
+            bestX = testX;
+            bestY = testY;
+          }
+        }
+
+        x = bestX;
+        y = bestY;
+      }
+
+      positions[project.id] = { x, y };
+      placedPoints.push({ x, y });
+    }
 
     return positions;
   };
