@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { EcosystemProject, CategoryType } from '@/types/ecosystem';
-import { CATEGORIES } from '@/data/ecosystemData';
+import { CATEGORIES, CATEGORY_COLORS } from '@/data/ecosystemData';
 import { ZoomIn, ZoomOut, RotateCcw, Plus, Upload, ImageIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,24 +9,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
-import { CATEGORY_COLORS } from '@/data/ecosystemData';
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
   onAddProject: (project: Omit<EcosystemProject, 'id'>) => void;
 }
 
+// Canvas dimensions
+const CANVAS_WIDTH = 960;
+const CANVAS_HEIGHT = 950;
+
 // Canvas layout - position boxes like the reference image
 const CANVAS_LAYOUT: Record<CategoryType, { x: number; y: number; width: number; height: number }> = {
-  'networks': { x: 40, y: 100, width: 240, height: 200 },
-  'coworking': { x: 40, y: 320, width: 240, height: 180 },
-  'media-events': { x: 40, y: 520, width: 240, height: 280 },
-  'education': { x: 40, y: 820, width: 240, height: 220 },
-  'local-vcs': { x: 310, y: 100, width: 300, height: 460 },
-  'corporate': { x: 310, y: 580, width: 300, height: 180 },
-  'public-entities': { x: 310, y: 780, width: 300, height: 110 },
-  'global-vcs': { x: 640, y: 100, width: 280, height: 360 },
-  'accelerators': { x: 640, y: 480, width: 280, height: 410 },
+  'networks': { x: 40, y: 80, width: 240, height: 200 },
+  'coworking': { x: 40, y: 300, width: 240, height: 180 },
+  'media-events': { x: 40, y: 500, width: 240, height: 280 },
+  'education': { x: 40, y: 800, width: 240, height: 220 },
+  'local-vcs': { x: 310, y: 80, width: 300, height: 460 },
+  'corporate': { x: 310, y: 560, width: 300, height: 180 },
+  'public-entities': { x: 310, y: 760, width: 300, height: 110 },
+  'global-vcs': { x: 640, y: 80, width: 280, height: 360 },
+  'accelerators': { x: 640, y: 460, width: 280, height: 410 },
 };
 
 const CATEGORY_OPTIONS: { value: CategoryType; label: string }[] = [
@@ -43,7 +46,7 @@ const CATEGORY_OPTIONS: { value: CategoryType; label: string }[] = [
 
 export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState({ x: 50, y: 20, scale: 0.85 });
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -56,6 +59,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
   const [formImage, setFormImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Center the canvas on load
+  useEffect(() => {
+    const centerCanvas = () => {
+      if (typeof window !== 'undefined') {
+        const scale = Math.min(0.9, (window.innerWidth - 100) / CANVAS_WIDTH, (window.innerHeight - 100) / CANVAS_HEIGHT);
+        const x = (window.innerWidth - CANVAS_WIDTH * scale) / 2;
+        const y = (window.innerHeight - CANVAS_HEIGHT * scale) / 2;
+        setTransform({ x, y, scale });
+      }
+    };
+    centerCanvas();
+  }, []);
+
   // Group projects by category
   const projectsByCategory = projects.reduce((acc, project) => {
     if (!acc[project.category]) acc[project.category] = [];
@@ -67,12 +83,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   };
 
-  const getProjectColors = (name: string) => {
-    const hue = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+  // Get colors based on category (not project name)
+  const getCategoryProjectColors = (category: CategoryType) => {
+    const baseColor = CATEGORY_COLORS[category];
+    // Parse the hex color and create lighter/darker variants
+    const hex = baseColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
     return {
-      bg: `hsl(${hue}, 55%, 88%)`,
-      text: `hsl(${hue}, 65%, 35%)`,
-      border: `hsl(${hue}, 50%, 78%)`,
+      bg: `rgba(${r}, ${g}, ${b}, 0.15)`,
+      text: baseColor,
+      border: `rgba(${r}, ${g}, ${b}, 0.4)`,
     };
   };
 
@@ -86,12 +109,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
     const row = Math.floor(index / cols);
     const col = index % cols;
     
-    const jitterX = (Math.sin(index * 3.7) * 0.12) * cellW;
-    const jitterY = (Math.cos(index * 2.3) * 0.12) * cellH;
+    const jitterX = (Math.sin(index * 3.7) * 0.1) * cellW;
+    const jitterY = (Math.cos(index * 2.3) * 0.1) * cellH;
     
     return {
       x: 12 + col * cellW + cellW / 2 + jitterX,
-      y: 38 + row * cellH + cellH / 2 + jitterY,
+      y: 40 + row * cellH + cellH / 2 + jitterY,
     };
   };
 
@@ -128,7 +151,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
 
   const zoomIn = () => setTransform(prev => ({ ...prev, scale: Math.min(2.5, prev.scale * 1.2) }));
   const zoomOut = () => setTransform(prev => ({ ...prev, scale: Math.max(0.25, prev.scale / 1.2) }));
-  const resetView = () => setTransform({ x: 50, y: 20, scale: 0.85 });
+  const resetView = () => {
+    const scale = Math.min(0.9, (window.innerWidth - 100) / CANVAS_WIDTH, (window.innerHeight - 100) / CANVAS_HEIGHT);
+    const x = (window.innerWidth - CANVAS_WIDTH * scale) / 2;
+    const y = (window.innerHeight - CANVAS_HEIGHT * scale) / 2;
+    setTransform({ x, y, scale });
+  };
 
   // Form handlers
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,19 +199,13 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-[#fafafa] overflow-hidden"
-      style={{ 
-        backgroundImage: 'radial-gradient(circle, #e5e5e5 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
-    >
+    <div className="fixed inset-0 bg-white overflow-hidden">
       {/* Top Bar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
-        <div className="bg-card/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-lg border border-border flex items-center gap-6">
+        <div className="bg-white rounded-xl px-6 py-3 shadow-lg border border-foreground/10 flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">NS</span>
+            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
+              <span className="text-background font-bold text-sm">NS</span>
             </div>
             <div>
               <h1 className="text-sm font-bold text-foreground leading-tight">NS Ecosystem</h1>
@@ -239,14 +261,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
               <div>
                 <Label className="text-xs">Logo (optional)</Label>
                 <div 
-                  className="mt-1 border border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                  className="mt-1 border border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:border-foreground/30 hover:bg-muted/30 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {formImage ? (
                     <div className="relative inline-block">
                       <img src={formImage} alt="Preview" className="w-12 h-12 object-cover rounded" />
                       <button
-                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
+                        className="absolute -top-1 -right-1 bg-foreground text-background rounded-full w-4 h-4 text-[10px] flex items-center justify-center"
                         onClick={(e) => { e.stopPropagation(); setFormImage(null); }}
                       >
                         <X className="h-2.5 w-2.5" />
@@ -317,7 +339,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
       </div>
 
       {/* Canvas hint */}
-      <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-card/80 backdrop-blur-sm rounded-lg px-3 py-2">
+      <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
         Drag to pan • Scroll to zoom
       </div>
 
@@ -335,13 +357,20 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
           className="relative origin-top-left transition-transform duration-75"
           style={{
             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-            width: 960,
-            height: 920,
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
           }}
         >
           {/* Title on canvas */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 whitespace-nowrap">
-            <h2 className="text-3xl font-bold text-foreground/80">
+          <div 
+            className="absolute whitespace-nowrap"
+            style={{
+              top: 20,
+              left: CANVAS_WIDTH / 2,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            <h2 className="text-3xl font-bold text-foreground">
               Mapping of the NS Startup Ecosystem
             </h2>
           </div>
@@ -354,7 +383,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
             return (
               <div
                 key={category.id}
-                className="absolute rounded-xl bg-card/60 backdrop-blur-[1px] border border-border/50 shadow-sm"
+                className="absolute rounded-lg bg-white border-2 border-foreground/80"
                 style={{
                   left: layout.x,
                   top: layout.y,
@@ -362,10 +391,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                   height: layout.height,
                 }}
               >
-                {/* Category Label */}
+                {/* Category Label - Centered in top border */}
                 <div
-                  className="absolute top-0 left-0 px-3 py-1.5 text-xs font-semibold rounded-tl-xl rounded-br-xl shadow-sm"
-                  style={{ backgroundColor: category.color, color: 'white' }}
+                  className="absolute left-1/2 -translate-x-1/2 -top-3 px-3 py-1 text-xs font-semibold bg-white border-2 border-foreground/80 rounded"
                 >
                   {category.name}
                 </div>
@@ -373,7 +401,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                 {/* Scattered Items */}
                 {categoryProjects.map((project, index) => {
                   const pos = getItemPosition(index, categoryProjects.length, layout.width, layout.height);
-                  const colors = getProjectColors(project.name);
+                  const colors = getCategoryProjectColors(category.id);
                   const isHovered = hoveredItem === project.id;
                   const baseSize = Math.min(55, Math.max(38, layout.width / 5.5));
 
@@ -398,9 +426,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                           height: baseSize * 0.72,
                           backgroundColor: colors.bg,
                           color: colors.text,
-                          border: `1.5px solid ${colors.border}`,
+                          border: `2px solid ${colors.border}`,
                           fontSize: baseSize * 0.28,
-                          boxShadow: isHovered ? '0 6px 16px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+                          boxShadow: isHovered ? '0 6px 16px rgba(0,0,0,0.12)' : 'none',
                         }}
                       >
                         {getInitials(project.name)}
@@ -411,7 +439,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
                         style={{
                           fontSize: Math.max(9, baseSize * 0.18),
                           maxWidth: baseSize + 20,
-                          color: isHovered ? colors.text : '#555',
+                          color: isHovered ? colors.text : '#333',
                           fontWeight: isHovered ? 600 : 400,
                         }}
                       >
@@ -425,7 +453,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({ projects, onAddProject }
           })}
 
           {/* Footer */}
-          <div className="absolute bottom-3 right-6 text-[11px] text-muted-foreground/60">
+          <div className="absolute bottom-3 right-6 text-[11px] text-muted-foreground">
             v1.0 • NS Ecosystem Map
           </div>
         </div>
