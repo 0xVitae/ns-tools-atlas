@@ -92,7 +92,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   };
 
   return (
-    <div className="absolute bottom-6 right-6 z-30">
+    <div className="z-30">
       <Popover open={isFormOpen} onOpenChange={setIsFormOpen}>
         <PopoverTrigger asChild>
           <Button

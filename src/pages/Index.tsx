@@ -1,19 +1,29 @@
-import React from 'react';
-import { FullCanvas } from '@/components/ecosystem/FullCanvas';
-import { EcosystemProject } from '@/types/ecosystem';
-import { useProjects, useSubmitProject } from '@/hooks/useProjects';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { FullCanvas } from "@/components/ecosystem/FullCanvas";
+import { EcosystemProject } from "@/types/ecosystem";
+import { useProjects, useSubmitProject } from "@/hooks/useProjects";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2 } from "lucide-react";
 
 const Index = () => {
   const { data: projects = [], isLoading, error } = useProjects();
   const submitMutation = useSubmitProject();
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
-  const handleAddProject = async (newProject: Omit<EcosystemProject, 'id'>) => {
+  const handleAddProject = async (newProject: Omit<EcosystemProject, "id">) => {
     const result = await submitMutation.mutateAsync(newProject);
     if (result.success) {
-      toast.success('Project submitted for review!');
+      setShowSuccessDialog(true);
     } else {
-      toast.error(result.error || 'Submission failed');
+      toast.error(result.error || "Submission failed");
     }
   };
 
@@ -45,11 +55,43 @@ const Index = () => {
   }
 
   return (
-    <FullCanvas
-      projects={projects}
-      onAddProject={handleAddProject}
-      isSubmitting={submitMutation.isPending}
-    />
+    <>
+      <FullCanvas
+        projects={projects}
+        onAddProject={handleAddProject}
+        isSubmitting={submitMutation.isPending}
+      />
+
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
+            </div>
+            <DialogTitle className="text-xl">Project Submitted!</DialogTitle>
+            <DialogDescription className="text-center pt-2">
+              <p>
+                Your project is pending verification.{" "}
+                <a
+                  href="https://discord.com/users/410668042981343232"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground hover:underline font-semibold"
+                >
+                  Click here
+                </a>{" "}
+                to ping{" "}
+                <span className="text-foreground font-semibold">@byornoste</span> on
+                Discord.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-4">
+            <Button onClick={() => setShowSuccessDialog(false)}>Got it!</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

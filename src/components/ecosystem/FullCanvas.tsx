@@ -583,8 +583,25 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         </div>
       </div>
 
-      {/* Add Project Form */}
-      <AddProjectForm onAddProject={onAddProject} isSubmitting={isSubmitting} />
+      {/* Add Project Form - Top Right */}
+      <div className="absolute top-4 right-4 z-30">
+        <AddProjectForm
+          onAddProject={onAddProject}
+          isSubmitting={isSubmitting}
+        />
+      </div>
+
+      {/* Built by credit */}
+      <div className="absolute bottom-6 right-6 z-20">
+        <a
+          href="https://x.com/byornoste"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-muted-foreground hover:text-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border transition-colors"
+        >
+          🔨 Built by Byorn
+        </a>
+      </div>
 
       {/* Canvas hint */}
       <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
@@ -826,9 +843,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           })}
 
           {/* Footer */}
-          <div className="absolute bottom-2 right-4 text-[10px] text-muted-foreground">
+          {/* <div className="absolute bottom-2 right-4 text-[10px] text-muted-foreground">
             v1.0 • NS Ecosystem Map
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
