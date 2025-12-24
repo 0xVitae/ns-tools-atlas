@@ -10,6 +10,7 @@ import {
   buildCategoriesFromProjects,
   getCategoryColor,
   getCategoryName,
+  generateProjectSlug,
 } from "@/data/ecosystemData";
 import {
   ZoomIn,
@@ -19,6 +20,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +38,8 @@ interface FullCanvasProps {
   projects: EcosystemProject[];
   onAddProject: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
+  viewMode?: "canvas" | "list";
+  onViewModeChange?: (mode: "canvas" | "list") => void;
 }
 
 // Product Image Carousel Component with prev/next buttons
@@ -206,6 +210,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   projects,
   onAddProject,
   isSubmitting,
+  onViewModeChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -475,7 +480,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       transformRef.current.y = rect.height / 2 - projectY * scale;
       applyTransform();
 
-      // Set the selected item to highlight it and grey out others
+      // Set the selected item to highlight it and grey out others, and update URL hash
+      const slug = generateProjectSlug(project.name);
+      history.replaceState(null, "", `#${slug}`);
       setSelectedItem(project.id);
       setHoveredItem(project.id);
     },
@@ -485,7 +492,72 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   // Clear selection when clicking on canvas background
   const clearSelection = useCallback(() => {
     setSelectedItem(null);
+    // Clear the URL hash
+    history.replaceState(null, "", window.location.pathname + window.location.search);
   }, []);
+
+  // Select a project and update the URL hash
+  const selectProject = useCallback(
+    (projectId: string | null) => {
+      setSelectedItem(projectId);
+      if (projectId) {
+        const project = projects.find((p) => p.id === projectId);
+        if (project) {
+          const slug = generateProjectSlug(project.name);
+          history.replaceState(null, "", `#${slug}`);
+        }
+      } else {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    },
+    [projects]
+  );
+
+  // Find project by URL hash slug
+  const findProjectBySlug = useCallback(
+    (slug: string): EcosystemProject | undefined => {
+      return projects.find((p) => generateProjectSlug(p.name) === slug);
+    },
+    [projects]
+  );
+
+  // Handle URL hash on mount and hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove the # prefix
+      if (hash) {
+        const project = findProjectBySlug(hash);
+        if (project) {
+          // Find position and pan to project
+          const boxLayout = dynamicLayout[project.category];
+          const pos = categoryPositions[project.category]?.[project.id];
+          if (boxLayout && pos) {
+            const projectX = boxLayout.x + pos.x;
+            const projectY = boxLayout.y + pos.y;
+
+            const container = containerRef.current;
+            if (container) {
+              const rect = container.getBoundingClientRect();
+              const scale = transformRef.current.scale;
+
+              transformRef.current.x = rect.width / 2 - projectX * scale;
+              transformRef.current.y = rect.height / 2 - projectY * scale;
+              applyTransform();
+            }
+          }
+          setSelectedItem(project.id);
+          setHoveredItem(project.id);
+        }
+      }
+    };
+
+    // Handle initial hash on mount
+    handleHashChange();
+
+    // Listen for hash changes (browser back/forward)
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [findProjectBySlug, dynamicLayout, categoryPositions, applyTransform]);
 
   // Pan handlers - use refs and requestAnimationFrame for smooth performance
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -677,6 +749,20 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           >
             <RotateCcw className="h-4 w-4" />
           </Button>
+          {onViewModeChange && (
+            <>
+              <div className="h-px w-6 bg-border my-1" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onViewModeChange("list")}
+                title="Switch to list view"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -815,9 +901,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             if (isSelected) {
-                              setSelectedItem(null);
+                              selectProject(null);
                             } else {
-                              setSelectedItem(project.id);
+                              selectProject(project.id);
                             }
                           }}
                         >
