@@ -6,7 +6,7 @@ import {
   getColorForNewCategory,
   generateCategorySlug,
 } from "@/data/ecosystemData";
-import { Plus, X, ImageIcon, Smile, Sparkles, Images } from "lucide-react";
+import { Plus, X, ImageIcon, Smile, Sparkles, Images, ExternalLink, User, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +45,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   isMobile = false,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authProfileUrl, setAuthProfileUrl] = useState("");
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
@@ -57,6 +59,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // Product images gallery state (max 3)
   const [formProductImages, setFormProductImages] = useState<string[]>([]);
   const [newProductImageUrl, setNewProductImageUrl] = useState("");
+
+  // NS Profile URLs state (max 3)
+  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>([]);
+  const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
 
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -79,6 +85,24 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     } catch {
       return false;
     }
+  };
+
+  // Check if auth profile URL is valid (just needs to be a valid URL)
+  const isAuthProfileUrlValid = isValidUrl(authProfileUrl);
+
+  // Handle auth continuation
+  const handleAuthContinue = () => {
+    if (!authProfileUrl.trim()) {
+      toast.error("Please enter your NS Profile URL");
+      return;
+    }
+    if (!isAuthProfileUrlValid) {
+      toast.error("Please enter a valid URL (http:// or https://)");
+      return;
+    }
+    // Add the auth URL to the NS profile URLs list
+    setFormNsProfileUrls([authProfileUrl.trim()]);
+    setIsAuthenticated(true);
   };
 
   // Validation states for URLs
@@ -120,14 +144,52 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const allComplete = completedSteps.every(Boolean);
 
-  // Progressive reveal conditions (require valid data to proceed)
-  const showStep3 = Boolean(
+  // Step 1 completion: must have emoji OR valid logo image
+  const isStep1Complete = Boolean(
+    formEmoji || (formImageUrl.trim() && isLogoUrlValid && logoImageValid === true)
+  );
+
+  // Step 2 completion: must have name and valid website URL (guide URL is optional but must be valid if provided)
+  const isStep2Complete = Boolean(
     formName.trim() && isWebsiteUrlValid && isGuideUrlValid
   );
+
+  // Progressive reveal conditions (require BOTH step 1 AND step 2 to be complete for step 3)
+  const showStep3 = isStep1Complete && isStep2Complete;
   const showStep4 =
     showStep3 &&
     Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim()));
   const showStep5 = showStep4 && Boolean(formDescription.trim());
+
+  const MAX_NS_PROFILE_URLS = 3;
+
+  // Helper to add an NS Profile URL
+  const handleAddNsProfileUrl = () => {
+    const url = newNsProfileUrl.trim();
+    if (!url) {
+      toast.error("Please enter a URL");
+      return;
+    }
+    if (!isValidUrl(url)) {
+      toast.error("Please enter a valid URL (http:// or https://)");
+      return;
+    }
+    if (formNsProfileUrls.length >= MAX_NS_PROFILE_URLS) {
+      toast.error(`Maximum ${MAX_NS_PROFILE_URLS} profile URLs allowed`);
+      return;
+    }
+    if (formNsProfileUrls.includes(url)) {
+      toast.error("This URL is already added");
+      return;
+    }
+    setFormNsProfileUrls([...formNsProfileUrls, url]);
+    setNewNsProfileUrl("");
+  };
+
+  // Helper to remove an NS Profile URL
+  const handleRemoveNsProfileUrl = (index: number) => {
+    setFormNsProfileUrls(formNsProfileUrls.filter((_, i) => i !== index));
+  };
 
   // Helper to add a product image
   const handleAddProductImage = () => {
@@ -236,6 +298,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       description: formDescription.trim() || undefined,
       url: formUrl.trim() || undefined,
       guideUrl: formGuideUrl.trim() || undefined,
+      nsProfileUrls:
+        formNsProfileUrls.length > 0 ? formNsProfileUrls : undefined,
       imageUrl: formImageUrl.trim() || undefined,
       emoji: formEmoji || undefined,
       productImages:
@@ -250,6 +314,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setFormDescription("");
     setFormUrl("");
     setFormGuideUrl("");
+    setFormNsProfileUrls([]);
+    setNewNsProfileUrl("");
     setFormImageUrl("");
     setFormEmoji(null);
     setFormProductImages([]);
@@ -257,18 +323,110 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setShowEmojiPicker(false);
     setLogoImageValid(null);
     setProductImagesValid({});
+    setIsAuthenticated(false);
+    setAuthProfileUrl("");
     setIsFormOpen(false);
   };
+
+  // Auth content shown before form steps
+  const authContent = (
+    <>
+      <div className="relative bg-muted/30">
+        <div className="px-4 py-3">
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">
+            Add Project
+          </h3>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-border/30" />
+      </div>
+
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">
+              Verify Your Identity
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Paste your NS Profile URL to continue
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Input
+            type="url"
+            placeholder="https://ns.com/your-profile"
+            value={authProfileUrl}
+            onChange={(e) => setAuthProfileUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAuthContinue();
+              }
+            }}
+            onPaste={(e) => {
+              const pastedText = e.clipboardData.getData("text").trim();
+              if (
+                pastedText &&
+                (pastedText.startsWith("http://") ||
+                  pastedText.startsWith("https://"))
+              ) {
+                e.preventDefault();
+                setAuthProfileUrl(pastedText);
+                // Auto-continue after paste
+                setTimeout(() => {
+                  setFormNsProfileUrls([pastedText]);
+                  setIsAuthenticated(true);
+                }, 100);
+              }
+            }}
+            className={`h-11 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+              authProfileUrl.trim()
+                ? isAuthProfileUrlValid
+                  ? "border-emerald-400 focus:border-emerald-400"
+                  : "border-red-400 focus:border-red-400"
+                : ""
+            }`}
+          />
+          {authProfileUrl.trim() && !isAuthProfileUrlValid && (
+            <p className="text-xs text-red-500">
+              Please enter a valid URL (http:// or https://)
+            </p>
+          )}
+        </div>
+
+        <Button
+          onClick={handleAuthContinue}
+          disabled={!isAuthProfileUrlValid}
+          className={`w-full h-10 text-sm font-medium transition-all duration-300 gap-2 ${
+            isAuthProfileUrlValid
+              ? "bg-primary hover:bg-primary/90"
+              : ""
+          }`}
+        >
+          Continue
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </>
+  );
 
   // Form content shared between Popover and Drawer
   const formContent = (
     <>
       {/* Header with Progress Bar Border */}
       <div className="relative bg-muted/30">
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground tracking-tight">
                 Add Project
               </h3>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Check className="h-3 w-3 text-emerald-500" />
+                <span className="truncate max-w-[120px]">{authProfileUrl.replace(/^https?:\/\//, '').split('/')[0]}</span>
+              </div>
             </div>
             {/* Progress bar as bottom border */}
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-border/30">
@@ -470,6 +628,95 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     <p className="text-xs text-red-500 mt-1">
                       Please enter a valid URL (http:// or https://)
                     </p>
+                  )}
+                </div>
+                {/* NS Profile URLs */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-muted-foreground/70">
+                      NS Profile URLs (optional)
+                    </label>
+                    <span className="text-[10px] text-muted-foreground/50">
+                      {formNsProfileUrls.length}/{MAX_NS_PROFILE_URLS}
+                    </span>
+                  </div>
+
+                  {/* URL Input Row */}
+                  {formNsProfileUrls.length < MAX_NS_PROFILE_URLS && (
+                    <div className="flex gap-2">
+                      <Input
+                        type="url"
+                        placeholder="Paste NS profile URL..."
+                        value={newNsProfileUrl}
+                        onChange={(e) => setNewNsProfileUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNsProfileUrl();
+                          }
+                        }}
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData
+                            .getData("text")
+                            .trim();
+                          if (
+                            pastedText &&
+                            (pastedText.startsWith("http://") ||
+                              pastedText.startsWith("https://"))
+                          ) {
+                            e.preventDefault();
+                            if (formNsProfileUrls.length >= MAX_NS_PROFILE_URLS) {
+                              toast.error(
+                                `Maximum ${MAX_NS_PROFILE_URLS} profile URLs allowed`
+                              );
+                              return;
+                            }
+                            if (formNsProfileUrls.includes(pastedText)) {
+                              toast.error("This URL is already added");
+                              return;
+                            }
+                            setFormNsProfileUrls([
+                              ...formNsProfileUrls,
+                              pastedText,
+                            ]);
+                          }
+                        }}
+                        className="h-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleAddNsProfileUrl}
+                        className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Added URLs List */}
+                  {formNsProfileUrls.length > 0 && (
+                    <div className="space-y-1.5">
+                      {formNsProfileUrls.map((url, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                          <span className="flex-1 text-xs text-foreground truncate">
+                            {url}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNsProfileUrl(index)}
+                            className="w-5 h-5 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-colors shrink-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -748,7 +995,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         </DrawerTrigger>
         <DrawerContent className="max-h-[90vh]">
           <div className="overflow-y-auto pb-safe">
-            {formContent}
+            {isAuthenticated ? formContent : authContent}
           </div>
         </DrawerContent>
       </Drawer>
@@ -773,7 +1020,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl"
           sideOffset={8}
         >
-          {formContent}
+          {isAuthenticated ? formContent : authContent}
         </PopoverContent>
       </Popover>
     </div>

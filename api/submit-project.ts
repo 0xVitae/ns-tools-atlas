@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { name, category, description, url, guideUrl, imageUrl, emoji, productImages, customCategoryName, customCategoryColor } = req.body;
+    const { name, category, description, url, guideUrl, nsProfileUrls, imageUrl, emoji, productImages, customCategoryName, customCategoryColor } = req.body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${PENDING_SHEET_NAME}!A:J`,
+      range: `${PENDING_SHEET_NAME}!A:K`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           description?.trim() || '',
           url?.trim() || '',
           guideUrl?.trim() || '',
+          nsProfileUrls || '',  // Pipe-separated URLs (e.g., "url1|url2|url3")
           imageUrl || '',
           emoji || '',
           productImages || '',  // Pipe-separated URLs (e.g., "img1.jpg|img2.jpg|img3.jpg")

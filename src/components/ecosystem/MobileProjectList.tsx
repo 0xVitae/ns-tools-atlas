@@ -217,6 +217,31 @@ const ProjectDetailDrawer: React.FC<{
               </div>
             )}
 
+            {/* NS Profile Links */}
+            {project.nsProfileUrls && project.nsProfileUrls.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {project.nsProfileUrls.map((profileUrl, idx) => {
+                  // Extract username from URL like https://ns.com/alexignatov
+                  const username = profileUrl.split('/').pop() || profileUrl;
+                  return (
+                    <a
+                      key={idx}
+                      href={profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: colors.bg,
+                        color: colors.text,
+                      }}
+                    >
+                      @{username}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Product Images */}
             {project.productImages && project.productImages.length > 0 && (
               <div className="space-y-3">

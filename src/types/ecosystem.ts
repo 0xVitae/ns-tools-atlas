@@ -19,6 +19,7 @@ export interface EcosystemProject {
   description?: string;
   url?: string;
   guideUrl?: string;    // Link to a guide/documentation
+  nsProfileUrls?: string[];  // Array of NS profile URLs
   productImages?: string[];  // Array of product image URLs (max 3)
   customCategory?: CustomCategory;  // Present when suggesting a new category
 }
