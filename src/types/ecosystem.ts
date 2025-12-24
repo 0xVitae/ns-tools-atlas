@@ -1,3 +1,5 @@
+export type ProjectTag = 'nsOfficial' | 'free' | 'paid';
+
 export interface Category {
   id: string;
   name: string;
@@ -22,6 +24,7 @@ export interface EcosystemProject {
   nsProfileUrls?: string[];  // Array of NS profile URLs
   productImages?: string[];  // Array of product image URLs (max 3)
   customCategory?: CustomCategory;  // Present when suggesting a new category
+  tags?: ProjectTag[];  // Tags for filtering and display (nsOfficial, free, paid)
 }
 
 export interface CanvasState {

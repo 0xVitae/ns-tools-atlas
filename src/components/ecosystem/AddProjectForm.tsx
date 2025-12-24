@@ -47,6 +47,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authProfileUrl, setAuthProfileUrl] = useState("");
+  const [isValidatingProfile, setIsValidatingProfile] = useState(false);
+  const [profileValidationError, setProfileValidationError] = useState<string | null>(null);
+  const [isProfileVerified, setIsProfileVerified] = useState(false);
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
@@ -90,8 +93,33 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // Check if auth profile URL is valid (just needs to be a valid URL)
   const isAuthProfileUrlValid = isValidUrl(authProfileUrl);
 
+  // Check if URL is from ns.com domain
+  const isNsComUrl = (url: string): boolean => {
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname.toLowerCase();
+      return hostname === 'ns.com' || hostname.endsWith('.ns.com');
+    } catch {
+      return false;
+    }
+  };
+
+  // Validate NS profile URL exists via API
+  const validateNsProfile = async (url: string): Promise<{ valid: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/validate-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      return await response.json();
+    } catch {
+      return { valid: false, error: 'Network error - please try again' };
+    }
+  };
+
   // Handle auth continuation
-  const handleAuthContinue = () => {
+  const handleAuthContinue = async () => {
     if (!authProfileUrl.trim()) {
       toast.error("Please enter your NS Profile URL");
       return;
@@ -100,9 +128,30 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       toast.error("Please enter a valid URL (http:// or https://)");
       return;
     }
-    // Add the auth URL to the NS profile URLs list
-    setFormNsProfileUrls([authProfileUrl.trim()]);
-    setIsAuthenticated(true);
+    if (!isNsComUrl(authProfileUrl)) {
+      toast.error("Please enter a valid NS Profile URL (ns.com)");
+      return;
+    }
+
+    setIsValidatingProfile(true);
+    setProfileValidationError(null);
+
+    try {
+      const result = await validateNsProfile(authProfileUrl.trim());
+      if (result.valid) {
+        setFormNsProfileUrls([authProfileUrl.trim()]);
+        setIsProfileVerified(true);
+        setIsAuthenticated(true);
+      } else {
+        setProfileValidationError(result.error || "This profile doesn't exist");
+        toast.error(result.error || "Profile not found - please check the URL");
+      }
+    } catch {
+      setProfileValidationError("Validation failed - please try again");
+      toast.error("Validation failed - please try again");
+    } finally {
+      setIsValidatingProfile(false);
+    }
   };
 
   // Validation states for URLs
@@ -325,6 +374,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setProductImagesValid({});
     setIsAuthenticated(false);
     setAuthProfileUrl("");
+    setIsValidatingProfile(false);
+    setProfileValidationError(null);
+    setIsProfileVerified(false);
     setIsFormOpen(false);
   };
 
@@ -360,7 +412,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
             type="url"
             placeholder="https://ns.com/your-profile"
             value={authProfileUrl}
-            onChange={(e) => setAuthProfileUrl(e.target.value)}
+            onChange={(e) => {
+              setAuthProfileUrl(e.target.value);
+              setProfileValidationError(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -376,18 +431,21 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               ) {
                 e.preventDefault();
                 setAuthProfileUrl(pastedText);
-                // Auto-continue after paste
-                setTimeout(() => {
-                  setFormNsProfileUrls([pastedText]);
-                  setIsAuthenticated(true);
-                }, 100);
+                setProfileValidationError(null);
+                // User must click Continue to validate
               }
             }}
             className={`h-11 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
               authProfileUrl.trim()
-                ? isAuthProfileUrlValid
-                  ? "border-emerald-400 focus:border-emerald-400"
-                  : "border-red-400 focus:border-red-400"
+                ? isValidatingProfile
+                  ? "border-yellow-400 focus:border-yellow-400"
+                  : isProfileVerified
+                    ? "border-emerald-400 focus:border-emerald-400"
+                    : profileValidationError
+                      ? "border-red-400 focus:border-red-400"
+                      : isAuthProfileUrlValid
+                        ? "border-blue-400 focus:border-blue-400"
+                        : "border-red-400 focus:border-red-400"
                 : ""
             }`}
           />
@@ -396,19 +454,33 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               Please enter a valid URL (http:// or https://)
             </p>
           )}
+          {profileValidationError && (
+            <p className="text-xs text-red-500">
+              {profileValidationError}
+            </p>
+          )}
         </div>
 
         <Button
           onClick={handleAuthContinue}
-          disabled={!isAuthProfileUrlValid}
+          disabled={!isAuthProfileUrlValid || isValidatingProfile}
           className={`w-full h-10 text-sm font-medium transition-all duration-300 gap-2 ${
-            isAuthProfileUrlValid
+            isAuthProfileUrlValid && !isValidatingProfile
               ? "bg-primary hover:bg-primary/90"
               : ""
           }`}
         >
-          Continue
-          <ArrowRight className="h-4 w-4" />
+          {isValidatingProfile ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+              Verifying...
+            </>
+          ) : (
+            <>
+              Continue
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </>
