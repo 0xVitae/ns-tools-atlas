@@ -1,4 +1,4 @@
-import { EcosystemProject } from '@/types/ecosystem';
+import { EcosystemProject, ProjectTag } from '@/types/ecosystem';
 import { CATEGORIES } from '@/data/ecosystemData';
 
 // Published CSV URL from Google Sheets (approved tab only)
@@ -58,10 +58,13 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
   const projects: EcosystemProject[] = [];
   const validCategoryIds = getValidCategoryIds();
 
+  // Valid tags for validation
+  const validTags: ProjectTag[] = ['nsOfficial', 'free', 'paid'];
+
   // Skip header row (index 0)
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    const [id, name, category, description, url, guideUrl, nsProfileUrlsRaw, imageUrl, emoji, productImagesRaw] = values;
+    const [id, name, category, description, url, guideUrl, nsProfileUrlsRaw, imageUrl, emoji, productImagesRaw, tagsRaw] = values;
 
     // Warn about unknown categories but don't skip them
     // This allows custom categories that have been added to the JSON
@@ -79,6 +82,11 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
       ? productImagesRaw.split('|').map(s => s.trim()).filter(Boolean)
       : undefined;
 
+    // Parse tags from pipe-separated string (e.g., "nsOfficial|free")
+    const tags = tagsRaw
+      ? tagsRaw.split('|').map(s => s.trim()).filter((t): t is ProjectTag => validTags.includes(t as ProjectTag))
+      : undefined;
+
     if (id && name && category) {
       projects.push({
         id,
@@ -91,6 +99,7 @@ export async function fetchApprovedProjects(): Promise<EcosystemProject[]> {
         imageUrl: imageUrl || undefined,
         emoji: emoji || undefined,
         productImages: productImages && productImages.length > 0 ? productImages : undefined,
+        tags: tags && tags.length > 0 ? tags : undefined,
       });
     }
   }
@@ -113,6 +122,8 @@ export async function submitProject(
       productImages: project.productImages?.join('|') || undefined,
       // Convert nsProfileUrls array to pipe-separated string for sheets
       nsProfileUrls: project.nsProfileUrls?.join('|') || undefined,
+      // Convert tags array to pipe-separated string for sheets
+      tags: project.tags?.join('|') || undefined,
       // Flatten custom category for easier handling in sheets
       customCategoryName: project.customCategory?.name,
       customCategoryColor: project.customCategory?.color,
