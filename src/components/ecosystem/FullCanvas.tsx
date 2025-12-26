@@ -22,7 +22,9 @@ import {
   ChevronRight,
   List,
   ListFilter,
+  BarChart3,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -218,6 +220,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   isSubmitting,
   onViewModeChange,
 }) => {
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
@@ -518,6 +521,107 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }, []);
 
+  // Ensure hover card is visible by zooming out if necessary
+  const ensureHoverCardVisible = useCallback(
+    (project: EcosystemProject) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const boxLayout = dynamicLayout[project.category];
+      const pos = categoryPositions[project.category]?.[project.id];
+      if (!boxLayout || !pos) return;
+
+      // Calculate project position on canvas
+      const projectX = boxLayout.x + pos.x;
+      const projectY = boxLayout.y + pos.y;
+
+      // HoverCard dimensions (w-96=384px with images, w-72=288px without)
+      const hoverCardWidth = project.productImages?.length ? 384 : 288;
+      const hoverCardHeight = 350; // Approximate max height
+      const sideOffset = 12;
+      const buffer = 30;
+
+      // Get current transform values
+      const { x, y, scale } = transformRef.current;
+      const rect = container.getBoundingClientRect();
+
+      // Calculate HoverCard screen position (appears above the card)
+      const cardScreenX = projectX * scale + x;
+      const cardScreenY = projectY * scale + y;
+      const hoverCardTop = cardScreenY - (hoverCardHeight + sideOffset);
+      const hoverCardLeft = cardScreenX - hoverCardWidth / 2;
+      const hoverCardRight = cardScreenX + hoverCardWidth / 2;
+
+      // Check if overflow occurs
+      const minVisibleTop = buffer;
+      const minVisibleLeft = buffer;
+      const maxVisibleRight = rect.width - buffer;
+
+      if (
+        hoverCardTop < minVisibleTop ||
+        hoverCardLeft < minVisibleLeft ||
+        hoverCardRight > maxVisibleRight
+      ) {
+        // Calculate scale needed to fit
+        let newScale = scale;
+
+        // Scale for top overflow: we need the card's screen Y minus the hover card height to be >= buffer
+        if (hoverCardTop < minVisibleTop) {
+          // After zoom: cardScreenY' - hoverCardHeight - sideOffset >= buffer
+          // cardScreenY' = projectY * newScale + x'
+          // If we center on the project: x' = rect.width/2 - projectX * newScale, y' = rect.height/2 - projectY * newScale
+          // cardScreenY' = rect.height/2
+          // So we need: rect.height/2 - hoverCardHeight - sideOffset >= buffer
+          // newScale doesn't directly help with top if we center, so we need to adjust Y offset instead
+          // Let's calculate the minimum scale that allows the card to be positioned with room above
+          const neededTopSpace = hoverCardHeight + sideOffset + buffer;
+          const maxProjectScreenY = rect.height - buffer - 50; // Leave room at bottom too
+          // The project needs to be at least neededTopSpace from the top
+          // If centered: projectScreenY = rect.height/2
+          // This might not be enough, so we may need to zoom out and pan
+          const availableHeight = rect.height - buffer - 50; // top buffer and bottom margin
+          if (availableHeight > neededTopSpace) {
+            // Position project lower on screen so hover card fits
+            const targetProjectY = neededTopSpace + 50; // Some padding below hover card area
+            const newY = targetProjectY - projectY * scale;
+            transformRef.current.y = newY;
+          }
+        }
+
+        // Scale for horizontal overflow
+        if (hoverCardLeft < minVisibleLeft || hoverCardRight > maxVisibleRight) {
+          const neededWidth = hoverCardWidth + 2 * buffer;
+          if (neededWidth > rect.width) {
+            // Need to zoom out to fit width
+            newScale = Math.min(scale, (rect.width - 2 * buffer) / hoverCardWidth * scale);
+          }
+          // Center horizontally
+          transformRef.current.x = rect.width / 2 - projectX * newScale;
+        }
+
+        // Recalculate Y to ensure hover card fits at top
+        const newCardScreenY = projectY * newScale + transformRef.current.y;
+        const newHoverCardTop = newCardScreenY - hoverCardHeight - sideOffset;
+        if (newHoverCardTop < buffer) {
+          // Push the card down so hover card fits
+          const adjustment = buffer - newHoverCardTop;
+          transformRef.current.y += adjustment;
+        }
+
+        // Clamp scale to reasonable minimum
+        newScale = Math.max(0.6, newScale);
+
+        if (newScale !== scale) {
+          transformRef.current.scale = newScale;
+          setDisplayScale(Math.round(newScale * 100));
+        }
+
+        applyTransform();
+      }
+    },
+    [dynamicLayout, categoryPositions, applyTransform]
+  );
+
   // Select a project and update the URL hash
   const selectProject = useCallback(
     (projectId: string | null) => {
@@ -527,12 +631,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         if (project) {
           const slug = generateProjectSlug(project.name);
           history.replaceState(null, "", `#${slug}`);
+          // Ensure hover card will be visible
+          ensureHoverCardVisible(project);
         }
       } else {
         history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     },
-    [projects]
+    [projects, ensureHoverCardVisible]
   );
 
   // Find project by URL hash slug
@@ -926,6 +1032,16 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
               </div>
             </PopoverContent>
           </Popover>
+          <div className="h-px w-6 bg-border my-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => navigate("/data")}
+            title="View engagement data"
+          >
+            <BarChart3 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -1032,8 +1148,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                     90,
                     Math.max(65, boxLayout.width / 4)
                   );
-                  // Expand size when selected
-                  const displaySize = isSelected ? baseSize * 1.3 : baseSize;
+                  const displaySize = baseSize;
 
                   return (
                     <HoverCard
@@ -1049,11 +1164,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             left: pos.x,
                             top: pos.y,
                             transform: `translate(-50%, -50%) ${
-                              isSelected
-                                ? "scale(1.25)"
-                                : isHovered
-                                ? "scale(1.12)"
-                                : "scale(1)"
+                              isHovered ? "scale(1.12)" : "scale(1)"
                             }`,
                             zIndex: isSelected ? 20 : isHovered ? 10 : 1,
                             opacity: isGreyedOut ? 0.3 : 1,
@@ -1118,15 +1229,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent
-                        className={`z-50 ${
+                        className={`z-50 data-[side=top]:origin-bottom data-[side=bottom]:origin-top ${
                           project.productImages &&
                           project.productImages.length > 0
                             ? "w-96"
                             : "w-72"
                         }`}
+                        style={{
+                          transform: `scale(${0.85 / (displayScale / 100)})`,
+                        }}
                         side="top"
-                        sideOffset={12}
-                        avoidCollisions={false}
+                        sideOffset={12 / (displayScale / 100)}
+                        avoidCollisions={true}
+                        collisionPadding={16}
                       >
                         <div className="flex flex-col gap-2">
                           {/* Header with emoji/initials/logo and name */}
