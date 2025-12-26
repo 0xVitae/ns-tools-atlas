@@ -231,11 +231,30 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   const startPanRef = useRef({ x: 0, y: 0 });
   const rafIdRef = useRef<number | null>(null);
 
+  // Touch-related refs for mobile support
+  const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPinchDistRef = useRef<number | null>(null);
+  const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const isTouchPanningRef = useRef(false);
+
   // Only use state for UI that needs re-renders
   const [displayScale, setDisplayScale] = useState(100);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [activeTagFilters, setActiveTagFilters] = useState<ProjectTag[]>([]);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  // Detect touch device on mount
+  useEffect(() => {
+    const checkTouchDevice = () => {
+      setIsTouchDevice(
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia("(pointer: coarse)").matches
+      );
+    };
+    checkTouchDevice();
+  }, []);
 
   // Build dynamic categories from projects data
   const categories = useMemo(() => {
@@ -727,6 +746,105 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     }
   }, []);
 
+  // Touch helper functions for pinch-to-zoom
+  const getTouchDistance = (t1: React.Touch, t2: React.Touch) => {
+    return Math.sqrt(
+      Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2)
+    );
+  };
+
+  const getTouchCenter = (t1: React.Touch, t2: React.Touch) => {
+    return {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2,
+    };
+  };
+
+  // Touch handlers for mobile pan/zoom
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // Single touch - start panning
+      const touch = e.touches[0];
+      isTouchPanningRef.current = true;
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      lastPinchDistRef.current = null;
+      lastPinchCenterRef.current = null;
+    } else if (e.touches.length === 2) {
+      // Two fingers - start pinch zoom
+      isTouchPanningRef.current = false;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      lastPinchDistRef.current = getTouchDistance(t1, t2);
+      lastPinchCenterRef.current = getTouchCenter(t1, t2);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault(); // Prevent page scroll
+
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      if (e.touches.length === 1 && isTouchPanningRef.current && lastTouchRef.current) {
+        // Single touch pan
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - lastTouchRef.current.x;
+        const deltaY = touch.clientY - lastTouchRef.current.y;
+
+        rafIdRef.current = requestAnimationFrame(() => {
+          transformRef.current.x += deltaX;
+          transformRef.current.y += deltaY;
+          applyTransform();
+        });
+
+        lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      } else if (e.touches.length === 2 && lastPinchDistRef.current !== null && lastPinchCenterRef.current !== null) {
+        // Two finger pinch zoom
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const newDist = getTouchDistance(t1, t2);
+        const newCenter = getTouchCenter(t1, t2);
+
+        const scaleFactor = newDist / lastPinchDistRef.current;
+        const newScale = Math.max(0.5, Math.min(2, transformRef.current.scale * scaleFactor));
+
+        const container = containerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const centerX = newCenter.x - rect.left;
+          const centerY = newCenter.y - rect.top;
+
+          // Calculate pan offset from pinch center movement
+          const panDeltaX = newCenter.x - lastPinchCenterRef.current.x;
+          const panDeltaY = newCenter.y - lastPinchCenterRef.current.y;
+
+          rafIdRef.current = requestAnimationFrame(() => {
+            // Apply zoom around pinch center
+            const scaleChange = newScale / transformRef.current.scale;
+            transformRef.current.x = centerX - (centerX - transformRef.current.x) * scaleChange + panDeltaX;
+            transformRef.current.y = centerY - (centerY - transformRef.current.y) * scaleChange + panDeltaY;
+            transformRef.current.scale = newScale;
+            applyTransform();
+            setDisplayScale(Math.round(newScale * 100));
+          });
+        }
+
+        lastPinchDistRef.current = newDist;
+        lastPinchCenterRef.current = newCenter;
+      }
+    },
+    [applyTransform]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    isTouchPanningRef.current = false;
+    lastTouchRef.current = null;
+    lastPinchDistRef.current = null;
+    lastPinchCenterRef.current = null;
+  }, []);
+
   const zoomIn = useCallback(() => {
     const newScale = Math.min(2, transformRef.current.scale * 1.15);
     transformRef.current.scale = newScale;
@@ -1068,17 +1186,22 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
       {/* Canvas hint */}
       <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
-        Drag to pan • Scroll to zoom
+        {isTouchDevice ? "Drag to pan • Pinch to zoom" : "Drag to pan • Scroll to zoom"}
       </div>
 
       {/* Canvas */}
       <div
         ref={containerRef}
         className="w-full h-full cursor-grab select-none"
+        style={{ touchAction: "none" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         onClick={clearSelection}
       >
         <div

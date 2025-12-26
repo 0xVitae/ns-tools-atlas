@@ -117,6 +117,41 @@ const ProjectDetailDrawer: React.FC<{
   categories: Category[];
 }> = ({ project, open, onClose, categories }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Minimum swipe distance to trigger navigation (in px)
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (project?.productImages) {
+      if (isLeftSwipe && currentImageIndex < project.productImages.length - 1) {
+        setCurrentImageIndex((prev) => prev + 1);
+      } else if (isRightSwipe && currentImageIndex > 0) {
+        setCurrentImageIndex((prev) => prev - 1);
+      }
+    }
+  };
+
+  // Reset image index when project changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [project?.id]);
 
   if (!project) return null;
 
@@ -245,16 +280,50 @@ const ProjectDetailDrawer: React.FC<{
             {/* Product Images */}
             {project.productImages && project.productImages.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-900">Screenshots</h4>
-                <div className="relative rounded-xl overflow-hidden border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-900">Screenshots</h4>
+                  {project.productImages.length > 1 && (
+                    <span className="text-xs text-gray-400">
+                      {currentImageIndex + 1} / {project.productImages.length}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="relative rounded-xl overflow-hidden border border-gray-100 touch-pan-y"
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
                   <img
                     src={project.productImages[currentImageIndex]}
                     alt={`${project.name} screenshot ${currentImageIndex + 1}`}
-                    className="w-full h-auto"
+                    className="w-full h-auto select-none pointer-events-none"
+                    draggable={false}
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
+                  {/* Swipe hint overlay for multiple images */}
+                  {project.productImages.length > 1 && (
+                    <div className="absolute inset-0 flex items-center justify-between px-2 pointer-events-none">
+                      <div
+                        className={`w-8 h-8 rounded-full bg-black/20 flex items-center justify-center transition-opacity ${
+                          currentImageIndex > 0 ? "opacity-100" : "opacity-0"
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4 text-white rotate-180" />
+                      </div>
+                      <div
+                        className={`w-8 h-8 rounded-full bg-black/20 flex items-center justify-center transition-opacity ${
+                          currentImageIndex < project.productImages.length - 1
+                            ? "opacity-100"
+                            : "opacity-0"
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {project.productImages.length > 1 && (
                   <div className="flex justify-center gap-2">
