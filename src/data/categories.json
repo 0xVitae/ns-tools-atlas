@@ -1,8 +1,8 @@
 [
   { "id": "networks", "name": "Networks", "color": "#3B82F6" },
   { "id": "coworking", "name": "Coworking", "color": "#A855F7" },
-  { "id": "media-events", "name": "Events", "color": "#EC4899" },
-  { "id": "media-events", "name": "Media", "color": "#EC4899" },
+  { "id": "events", "name": "Events", "color": "#EC4899" },
+  { "id": "media", "name": "Media", "color": "#EC4899" },
   { "id": "education", "name": "Education", "color": "#10B981" },
   { "id": "local-vcs", "name": "Local VCs", "color": "#F59E0B" },
   { "id": "global-vcs", "name": "Global VCs", "color": "#F97316" },
