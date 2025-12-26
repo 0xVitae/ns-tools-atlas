@@ -174,17 +174,18 @@ const calculateLayout = (
   // Sort by height (tallest first) for better packing
   categoryData.sort((a, b) => b.height - a.height);
 
-  // Use 3 columns
+  // Use 3 columns with dynamic widths
   const numColumns = 3;
-  const columnWidths = [300, 320, 300];
-  const columnX = [
-    PADDING,
-    PADDING + columnWidths[0] + GAP,
-    PADDING + columnWidths[0] + columnWidths[1] + GAP * 2,
-  ];
+  const columnMaxWidths = [0, 0, 0];
   const columnY = [TITLE_HEIGHT, TITLE_HEIGHT, TITLE_HEIGHT];
+  const columnAssignments: Array<{
+    id: string;
+    width: number;
+    height: number;
+    col: number;
+  }> = [];
 
-  // Assign each category to the shortest column
+  // First pass: assign boxes to columns and track max widths
   categoryData.forEach(({ id, width, height }) => {
     // Find column with least height
     let minCol = 0;
@@ -194,22 +195,39 @@ const calculateLayout = (
       }
     }
 
-    // Place in that column - use calculated width based on project count
-    layout[id] = {
-      x: columnX[minCol],
-      y: columnY[minCol],
-      width: Math.min(width, columnWidths[minCol]), // Use smaller of calculated or column width
-      height: height,
-    };
+    // Track max width for this column
+    columnMaxWidths[minCol] = Math.max(columnMaxWidths[minCol], width);
+    columnAssignments.push({ id, width, height, col: minCol });
 
     // Update column height
     columnY[minCol] += height + GAP;
   });
 
+  // Calculate column X positions based on actual max widths
+  const columnX = [
+    PADDING,
+    PADDING + columnMaxWidths[0] + GAP,
+    PADDING + columnMaxWidths[0] + columnMaxWidths[1] + GAP * 2,
+  ];
+
+  // Reset column Y for second pass
+  const columnY2 = [TITLE_HEIGHT, TITLE_HEIGHT, TITLE_HEIGHT];
+
+  // Second pass: assign final positions using actual widths
+  columnAssignments.forEach(({ id, width, height, col }) => {
+    layout[id] = {
+      x: columnX[col],
+      y: columnY2[col],
+      width: width,
+      height: height,
+    };
+    columnY2[col] += height + GAP;
+  });
+
   // Calculate total canvas dimensions
   const maxHeight = Math.max(...columnY) + PADDING;
   const totalWidth =
-    columnX[numColumns - 1] + columnWidths[numColumns - 1] + PADDING;
+    columnX[numColumns - 1] + columnMaxWidths[numColumns - 1] + PADDING;
 
   return { layout, canvasWidth: totalWidth, canvasHeight: maxHeight };
 };
