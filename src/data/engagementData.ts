@@ -1,5 +1,110 @@
-import { EngagementData } from "@/types/engagement";
+import { EngagementData, AppEngagement, CategoryEngagement } from "@/types/engagement";
+import { EcosystemProject, Category } from "@/types/ecosystem";
+import { getCategoryColor, getCategoryName } from "./ecosystemData";
 
+/**
+ * Simple seeded random number generator for consistent mock data
+ */
+function seededRandom(seed: string): () => number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return () => {
+    hash = (hash * 1103515245 + 12345) & 0x7fffffff;
+    return hash / 0x7fffffff;
+  };
+}
+
+/**
+ * Generate a lighter shade of a color for app variants
+ */
+function lightenColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + amount);
+  const g = Math.min(255, ((num >> 8) & 0xff) + amount);
+  const b = Math.min(255, (num & 0xff) + amount);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+/**
+ * Generate mock engagement data from real projects
+ * Uses seeded random for consistent results between renders
+ */
+export function generateEngagementData(
+  projects: EcosystemProject[],
+  categories: Category[]
+): EngagementData {
+  // Group projects by category
+  const projectsByCategory = new Map<string, EcosystemProject[]>();
+  projects.forEach(project => {
+    const existing = projectsByCategory.get(project.category) || [];
+    existing.push(project);
+    projectsByCategory.set(project.category, existing);
+  });
+
+  // Build category engagement data
+  const categoryEngagements: CategoryEngagement[] = [];
+  let totalTasks = 0;
+  let totalUsers = 0;
+
+  categories.forEach((category, catIndex) => {
+    const categoryProjects = projectsByCategory.get(category.id) || [];
+    if (categoryProjects.length === 0) return; // Skip empty categories
+
+    const apps: AppEngagement[] = categoryProjects.map((project, projIndex) => {
+      const random = seededRandom(project.id);
+
+      const tasksCreated = Math.floor(random() * 7450 + 50);
+      const activeUsers = Math.floor(random() * 240 + 10);
+      const monthlyGrowth = Math.round((random() * 21.5 + 1) * 10) / 10;
+      const engagementScore = Math.floor(random() * 50 + 45);
+
+      totalTasks += tasksCreated;
+      totalUsers += activeUsers;
+
+      return {
+        id: project.id,
+        name: project.name,
+        category: category.id,
+        icon: project.emoji || project.name.charAt(0).toUpperCase(),
+        color: lightenColor(category.color, projIndex * 30),
+        metrics: {
+          tasksCreated,
+          activeUsers,
+          monthlyGrowth,
+        },
+        engagementScore,
+      };
+    });
+
+    // Calculate average engagement for the category
+    const avgEngagement = Math.round(
+      apps.reduce((sum, app) => sum + app.engagementScore, 0) / apps.length
+    );
+
+    categoryEngagements.push({
+      id: category.id,
+      name: category.name,
+      color: category.color,
+      apps,
+      totalEngagement: avgEngagement,
+    });
+  });
+
+  return {
+    categories: categoryEngagements,
+    totalMetrics: {
+      totalTasks,
+      totalUsers,
+      totalApps: projects.length,
+    },
+    lastUpdated: new Date().toISOString().split('T')[0],
+  };
+}
+
+// Keep legacy mock data for fallback/testing
 export const MOCK_ENGAGEMENT_DATA: EngagementData = {
   categories: [
     {
@@ -15,10 +120,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🚀",
           color: "#3B82F6",
           metrics: {
-            tasksCreated: 12450,
-            activeUsers: 234,
-            totalSessions: 5670,
-            weeklyGrowth: 15.2,
+            tasksCreated: 6225,
+            activeUsers: 117,
+            monthlyGrowth: 7.6,
           },
           engagementScore: 92,
         },
@@ -29,10 +133,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "✅",
           color: "#60A5FA",
           metrics: {
-            tasksCreated: 8320,
-            activeUsers: 189,
-            totalSessions: 3420,
-            weeklyGrowth: 8.5,
+            tasksCreated: 4160,
+            activeUsers: 95,
+            monthlyGrowth: 4.3,
           },
           engagementScore: 78,
         },
@@ -43,10 +146,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "📝",
           color: "#93C5FD",
           metrics: {
-            tasksCreated: 4150,
-            activeUsers: 98,
-            totalSessions: 2100,
-            weeklyGrowth: 12.3,
+            tasksCreated: 2075,
+            activeUsers: 49,
+            monthlyGrowth: 6.2,
           },
           engagementScore: 65,
         },
@@ -65,10 +167,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🤝",
           color: "#A855F7",
           metrics: {
-            tasksCreated: 3200,
-            activeUsers: 156,
-            totalSessions: 4200,
-            weeklyGrowth: 22.1,
+            tasksCreated: 1600,
+            activeUsers: 78,
+            monthlyGrowth: 11.1,
           },
           engagementScore: 85,
         },
@@ -79,10 +180,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🌐",
           color: "#C084FC",
           metrics: {
-            tasksCreated: 1850,
-            activeUsers: 87,
-            totalSessions: 1900,
-            weeklyGrowth: 5.8,
+            tasksCreated: 925,
+            activeUsers: 44,
+            monthlyGrowth: 2.9,
           },
           engagementScore: 58,
         },
@@ -101,10 +201,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "📚",
           color: "#10B981",
           metrics: {
-            tasksCreated: 5600,
-            activeUsers: 312,
-            totalSessions: 8900,
-            weeklyGrowth: 18.4,
+            tasksCreated: 2800,
+            activeUsers: 156,
+            monthlyGrowth: 9.2,
           },
           engagementScore: 88,
         },
@@ -115,10 +214,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🎓",
           color: "#34D399",
           metrics: {
-            tasksCreated: 2100,
-            activeUsers: 145,
-            totalSessions: 3200,
-            weeklyGrowth: 9.2,
+            tasksCreated: 1050,
+            activeUsers: 73,
+            monthlyGrowth: 4.6,
           },
           engagementScore: 62,
         },
@@ -129,10 +227,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "👨‍🏫",
           color: "#6EE7B7",
           metrics: {
-            tasksCreated: 890,
-            activeUsers: 56,
-            totalSessions: 1200,
-            weeklyGrowth: 31.5,
+            tasksCreated: 445,
+            activeUsers: 28,
+            monthlyGrowth: 15.8,
           },
           engagementScore: 54,
         },
@@ -151,10 +248,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🎉",
           color: "#EC4899",
           metrics: {
-            tasksCreated: 1200,
-            activeUsers: 423,
-            totalSessions: 6700,
-            weeklyGrowth: 45.2,
+            tasksCreated: 600,
+            activeUsers: 212,
+            monthlyGrowth: 22.6,
           },
           engagementScore: 76,
         },
@@ -165,10 +261,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "📺",
           color: "#F472B6",
           metrics: {
-            tasksCreated: 780,
-            activeUsers: 234,
-            totalSessions: 4500,
-            weeklyGrowth: 12.8,
+            tasksCreated: 390,
+            activeUsers: 117,
+            monthlyGrowth: 6.4,
           },
           engagementScore: 52,
         },
@@ -187,10 +282,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "💰",
           color: "#F59E0B",
           metrics: {
-            tasksCreated: 450,
-            activeUsers: 67,
-            totalSessions: 890,
-            weeklyGrowth: 28.3,
+            tasksCreated: 225,
+            activeUsers: 34,
+            monthlyGrowth: 14.2,
           },
           engagementScore: 82,
         },
@@ -201,10 +295,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🏆",
           color: "#FBBF24",
           metrics: {
-            tasksCreated: 320,
-            activeUsers: 89,
-            totalSessions: 560,
-            weeklyGrowth: 15.6,
+            tasksCreated: 160,
+            activeUsers: 45,
+            monthlyGrowth: 7.8,
           },
           engagementScore: 71,
         },
@@ -223,10 +316,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "⚡",
           color: "#0EA5E9",
           metrics: {
-            tasksCreated: 980,
-            activeUsers: 45,
-            totalSessions: 1200,
-            weeklyGrowth: 34.2,
+            tasksCreated: 490,
+            activeUsers: 23,
+            monthlyGrowth: 17.1,
           },
           engagementScore: 79,
         },
@@ -237,10 +329,9 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
           icon: "🛫",
           color: "#38BDF8",
           metrics: {
-            tasksCreated: 560,
-            activeUsers: 32,
-            totalSessions: 780,
-            weeklyGrowth: 19.8,
+            tasksCreated: 280,
+            activeUsers: 16,
+            monthlyGrowth: 9.9,
           },
           engagementScore: 68,
         },
@@ -248,8 +339,8 @@ export const MOCK_ENGAGEMENT_DATA: EngagementData = {
     },
   ],
   totalMetrics: {
-    totalTasks: 42850,
-    totalUsers: 2167,
+    totalTasks: 21425,
+    totalUsers: 1084,
     totalApps: 15,
   },
   lastUpdated: "2025-12-24",
