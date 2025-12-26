@@ -1,8 +1,7 @@
 export interface AppMetrics {
   tasksCreated?: number;
   activeUsers?: number;
-  totalSessions?: number;
-  weeklyGrowth?: number; // percentage
+  monthlyGrowth?: number; // percentage
 }
 
 export interface AppEngagement {

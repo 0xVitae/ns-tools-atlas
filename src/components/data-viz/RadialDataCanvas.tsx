@@ -1,12 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { ArrowLeft, TrendingUp, Users, Layers } from "lucide-react";
+import { ArrowLeft, TrendingUp, Users, Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import RadialEngagementChart from "./RadialEngagementChart";
-import { MOCK_ENGAGEMENT_DATA, getTopApps } from "@/data/engagementData";
+import { generateEngagementData, getTopApps, MOCK_ENGAGEMENT_DATA } from "@/data/engagementData";
 import { AppEngagement, CategoryEngagement } from "@/types/engagement";
+import { useProjects } from "@/hooks/useProjects";
+import { buildCategoriesFromProjects } from "@/data/ecosystemData";
 
 export default function RadialDataCanvas() {
   const navigate = useNavigate();
@@ -16,7 +18,19 @@ export default function RadialDataCanvas() {
     category: CategoryEngagement;
   } | null>(null);
 
-  const topApps = getTopApps(MOCK_ENGAGEMENT_DATA, 5);
+  // Fetch real projects from Google Sheets
+  const { data: projects, isLoading, error } = useProjects();
+
+  // Generate engagement data from real projects
+  const engagementData = useMemo(() => {
+    if (!projects || projects.length === 0) {
+      return MOCK_ENGAGEMENT_DATA; // Fallback to mock data
+    }
+    const categories = buildCategoriesFromProjects(projects);
+    return generateEngagementData(projects, categories);
+  }, [projects]);
+
+  const topApps = getTopApps(engagementData, 5);
 
   const handleAppHover = (app: AppEngagement | null, category: CategoryEngagement | null) => {
     if (app && category) {
@@ -25,6 +39,18 @@ export default function RadialDataCanvas() {
       setHoveredApp(null);
     }
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading ecosystem data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-gradient-to-br from-slate-50 to-white overflow-hidden">
@@ -76,7 +102,7 @@ export default function RadialDataCanvas() {
             <div>
               <p className="text-xs text-muted-foreground">Total Tasks</p>
               <p className="text-lg font-bold">
-                {MOCK_ENGAGEMENT_DATA.totalMetrics.totalTasks.toLocaleString()}
+                {engagementData.totalMetrics.totalTasks.toLocaleString()}
               </p>
             </div>
           </div>
@@ -95,7 +121,7 @@ export default function RadialDataCanvas() {
             <div>
               <p className="text-xs text-muted-foreground">Active Users</p>
               <p className="text-lg font-bold">
-                {MOCK_ENGAGEMENT_DATA.totalMetrics.totalUsers.toLocaleString()}
+                {engagementData.totalMetrics.totalUsers.toLocaleString()}
               </p>
             </div>
           </div>
@@ -114,7 +140,7 @@ export default function RadialDataCanvas() {
             <div>
               <p className="text-xs text-muted-foreground">Total Apps</p>
               <p className="text-lg font-bold">
-                {MOCK_ENGAGEMENT_DATA.totalMetrics.totalApps}
+                {engagementData.totalMetrics.totalApps}
               </p>
             </div>
           </div>
@@ -155,7 +181,7 @@ export default function RadialDataCanvas() {
       >
         <h3 className="text-xs font-semibold text-muted-foreground mb-2">Categories</h3>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          {MOCK_ENGAGEMENT_DATA.categories.map((category) => (
+          {engagementData.categories.map((category) => (
             <div key={category.id} className="flex items-center gap-2">
               <div
                 className="w-3 h-3 rounded-full"
@@ -195,15 +221,9 @@ export default function RadialDataCanvas() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Sessions</p>
-              <p className="text-lg font-bold">
-                {hoveredApp.app.metrics.totalSessions?.toLocaleString() || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Weekly Growth</p>
+              <p className="text-xs text-muted-foreground">Monthly Growth</p>
               <p className="text-lg font-bold text-green-600">
-                +{hoveredApp.app.metrics.weeklyGrowth || 0}%
+                +{hoveredApp.app.metrics.monthlyGrowth || 0}%
               </p>
             </div>
           </div>
@@ -240,7 +260,7 @@ export default function RadialDataCanvas() {
       {/* Main Chart Area */}
       <div className="absolute inset-0 flex items-center justify-center">
         <RadialEngagementChart
-          data={MOCK_ENGAGEMENT_DATA}
+          data={engagementData}
           width={800}
           height={800}
           onAppHover={handleAppHover}
@@ -250,7 +270,7 @@ export default function RadialDataCanvas() {
       {/* Last Updated */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
         <p className="text-[10px] text-muted-foreground">
-          Last updated: {MOCK_ENGAGEMENT_DATA.lastUpdated}
+          Last updated: {engagementData.lastUpdated}
         </p>
       </div>
     </div>
