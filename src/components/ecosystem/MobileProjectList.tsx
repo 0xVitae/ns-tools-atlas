@@ -6,7 +6,7 @@ import {
   getCategoryName,
   generateProjectSlug,
 } from "@/data/ecosystemData";
-import { ExternalLink, BookOpen, ChevronRight, Search, X, LayoutGrid } from "lucide-react";
+import { ExternalLink, BookOpen, ChevronRight, Search, X, LayoutGrid, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +15,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { AddProjectForm } from "./AddProjectForm";
+import { ProjectTag } from "@/types/ecosystem";
 
 interface MobileProjectListProps {
   projects: EcosystemProject[];
@@ -359,22 +365,43 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState<EcosystemProject | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [activeTagFilters, setActiveTagFilters] = useState<ProjectTag[]>([]);
 
   // Build categories from projects
   const categories = useMemo(() => {
     return buildCategoriesFromProjects(projects);
   }, [projects]);
 
-  // Filter projects by search
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) return projects;
-    const query = searchQuery.toLowerCase();
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query)
+  // Toggle a tag filter on/off
+  const toggleTagFilter = (tag: ProjectTag) => {
+    setActiveTagFilters((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
-  }, [projects, searchQuery]);
+  };
+
+  // Filter projects by search and tags
+  const filteredProjects = useMemo(() => {
+    let result = projects;
+
+    // Filter by tags first (OR logic)
+    if (activeTagFilters.length > 0) {
+      result = result.filter((project) =>
+        project.tags?.some((tag) => activeTagFilters.includes(tag))
+      );
+    }
+
+    // Then filter by search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [projects, searchQuery, activeTagFilters]);
 
   // Group projects by category
   const projectsByCategory = useMemo(() => {
@@ -502,24 +529,167 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-[15px] placeholder:text-gray-400"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"
-              >
-                <X className="w-3 h-3 text-gray-500" />
-              </button>
-            )}
+          {/* Search Bar with Filter */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-[15px] placeholder:text-gray-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"
+                >
+                  <X className="w-3 h-3 text-gray-500" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-xl border-gray-200 bg-gray-50 relative"
+                >
+                  <ListFilter className="h-4 w-4 text-gray-500" />
+                  {activeTagFilters.length > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-2" side="bottom" align="end">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground px-2 py-1">
+                    Filter by tags
+                  </span>
+                  <button
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors ${
+                      activeTagFilters.includes("nsOfficial") ? "bg-muted" : ""
+                    }`}
+                    onClick={() => toggleTagFilter("nsOfficial")}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center ${
+                        activeTagFilters.includes("nsOfficial")
+                          ? "bg-primary border-primary"
+                          : "border-muted-foreground/30"
+                      }`}
+                    >
+                      {activeTagFilters.includes("nsOfficial") && (
+                        <svg
+                          className="w-3 h-3 text-primary-foreground"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="inline-flex items-center gap-1">
+                      <svg
+                        width="10"
+                        height="7"
+                        viewBox="0 0 30 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      NS Official
+                    </span>
+                  </button>
+                  <button
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors ${
+                      activeTagFilters.includes("free") ? "bg-muted" : ""
+                    }`}
+                    onClick={() => toggleTagFilter("free")}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center ${
+                        activeTagFilters.includes("free")
+                          ? "bg-primary border-primary"
+                          : "border-muted-foreground/30"
+                      }`}
+                    >
+                      {activeTagFilters.includes("free") && (
+                        <svg
+                          className="w-3 h-3 text-primary-foreground"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-emerald-600">Free</span>
+                  </button>
+                  <button
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors ${
+                      activeTagFilters.includes("paid") ? "bg-muted" : ""
+                    }`}
+                    onClick={() => toggleTagFilter("paid")}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center ${
+                        activeTagFilters.includes("paid")
+                          ? "bg-primary border-primary"
+                          : "border-muted-foreground/30"
+                      }`}
+                    >
+                      {activeTagFilters.includes("paid") && (
+                        <svg
+                          className="w-3 h-3 text-primary-foreground"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-amber-600">Paid</span>
+                  </button>
+                  {activeTagFilters.length > 0 && (
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      <button
+                        className="px-2 py-1.5 rounded text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        onClick={() => setActiveTagFilters([])}
+                      >
+                        Clear filters
+                      </button>
+                    </>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
