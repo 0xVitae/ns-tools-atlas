@@ -323,11 +323,15 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   useEffect(() => {
     const centerCanvas = () => {
       if (typeof window !== "undefined") {
-        const scale = 1;
+        // Use 50% zoom on mobile/touch devices for better overview
+        const isMobile = window.innerWidth < 768 ||
+          "ontouchstart" in window ||
+          navigator.maxTouchPoints > 0;
+        const scale = isMobile ? 0.5 : 1;
         const x = (window.innerWidth - canvasWidth * scale) / 2;
         const y = (window.innerHeight - canvasHeight * scale) / 2;
         transformRef.current = { x, y, scale };
-        setDisplayScale(100);
+        setDisplayScale(Math.round(scale * 100));
         applyTransform();
       }
     };
@@ -860,12 +864,16 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   }, [applyTransform]);
 
   const resetView = useCallback(() => {
-    const scale = 1;
+    // Use 50% zoom on mobile/touch devices
+    const isMobile = window.innerWidth < 768 ||
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0;
+    const scale = isMobile ? 0.5 : 1;
     const x = (window.innerWidth - canvasWidth * scale) / 2;
     const y = (window.innerHeight - canvasHeight * scale) / 2;
     transformRef.current = { x, y, scale };
     applyTransform();
-    setDisplayScale(100);
+    setDisplayScale(Math.round(scale * 100));
   }, [applyTransform, canvasWidth, canvasHeight]);
 
   // Cleanup RAF on unmount
@@ -952,15 +960,16 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
             </div>
           </div>
 
-          <div className="h-6 w-px bg-border" />
-
-          {/* Search Bar */}
-          <ActionSearchBar
-            ref={searchBarRef}
-            actions={searchActions}
-            placeholder="Find Projects"
-            onSelect={handleSearchSelect}
-          />
+          {/* Search Bar - hidden on mobile */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="h-6 w-px bg-border" />
+            <ActionSearchBar
+              ref={searchBarRef}
+              actions={searchActions}
+              placeholder="Find Projects"
+              onSelect={handleSearchSelect}
+            />
+          </div>
         </div>
       </div>
 
@@ -1163,8 +1172,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         </div>
       </div>
 
-      {/* Add Project Form - Top Right */}
-      <div className="absolute top-4 right-4 z-30">
+      {/* Add Project Form - Top Right, hidden on mobile */}
+      <div className="absolute top-4 right-4 z-30 hidden md:block">
         <AddProjectForm
           onAddProject={onAddProject}
           isSubmitting={isSubmitting}
@@ -1352,7 +1361,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                         </div>
                       </HoverCardTrigger>
                       <HoverCardContent
-                        className={`z-50 data-[side=top]:origin-bottom data-[side=bottom]:origin-top ${
+                        className={`z-[100] data-[side=top]:origin-bottom data-[side=bottom]:origin-top ${
                           project.productImages &&
                           project.productImages.length > 0
                             ? "w-96"
