@@ -1196,12 +1196,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       </div>
 
       {/* Built by credit */}
-      <div className="absolute bottom-6 right-6 z-20">
+      <div className="absolute bottom-6 right-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
         <a
           href="https://x.com/byornoste"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:text-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border transition-colors"
+          className="hover:text-foreground transition-colors"
         >
           🔨 Built by Byorn
         </a>
