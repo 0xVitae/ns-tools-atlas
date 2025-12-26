@@ -940,7 +940,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   return (
     <div className="fixed inset-0 bg-white overflow-hidden">
       {/* Top Bar */}
-      <div className="absolute top-4 left-4 z-30">
+      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
         <div className="bg-white rounded-xl px-5 py-3 shadow-lg border border-foreground/10 flex items-center gap-4">
           <div className="flex items-center gap-2">
             <img
@@ -971,60 +971,15 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
             />
           </div>
         </div>
-      </div>
 
-      {/* Zoom Controls - Stacked below top bar */}
-      <div className="absolute top-20 left-4 z-30">
-        <div className="bg-white rounded-lg shadow-lg border border-foreground/10 flex flex-col items-center p-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={zoomIn}
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <span className="text-[10px] text-muted-foreground py-1">
-            {displayScale}%
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={zoomOut}
-          >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <div className="h-px w-6 bg-border my-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={resetView}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          {onViewModeChange && (
-            <>
-              <div className="h-px w-6 bg-border my-1" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onViewModeChange("list")}
-                title="Switch to list view"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-          <div className="h-px w-6 bg-border my-1" />
+        {/* Filter button - floating, no background (hidden on mobile like search) */}
+        <div className="hidden md:block">
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 relative"
+                className="h-8 w-8 relative text-muted-foreground hover:text-foreground hover:bg-transparent"
                 title="Filter by tags"
               >
                 <ListFilter className="h-4 w-4" />
@@ -1033,7 +988,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" side="right" align="start">
+            <PopoverContent className="w-48 p-2" side="bottom" align="start">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-muted-foreground px-2 py-1">
                   Filter by tags
@@ -1159,21 +1114,80 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
               </div>
             </PopoverContent>
           </Popover>
+        </div>
+      </div>
+
+      {/* Zoom Controls - Stacked below top bar */}
+      <div className="absolute top-20 left-4 z-30">
+        <div className="bg-white rounded-lg shadow-lg border border-foreground/10 flex flex-col items-center p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={zoomIn}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <span className="text-[10px] text-muted-foreground py-1">
+            {displayScale}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={zoomOut}
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
           <div className="h-px w-6 bg-border my-1" />
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => navigate("/data")}
-            title="View engagement data"
+            onClick={resetView}
           >
-            <BarChart3 className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Add Project Form - Top Right, hidden on mobile */}
-      <div className="absolute top-4 right-4 z-30 hidden md:block">
+      {/* Mobile: List button only - Top Right */}
+      {onViewModeChange && (
+        <div className="absolute top-4 right-4 z-30 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 bg-white rounded-lg shadow-lg border border-foreground/10"
+            onClick={() => onViewModeChange("list")}
+            title="Switch to list view"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Desktop: List, Data, and Add Project buttons - Top Right */}
+      <div className="absolute top-4 right-4 z-30 hidden md:flex items-center gap-2">
+        {onViewModeChange && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 bg-white rounded-lg shadow-lg border border-foreground/10"
+            onClick={() => onViewModeChange("list")}
+            title="Switch to list view"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 bg-white rounded-lg shadow-lg border border-foreground/10"
+          onClick={() => navigate("/data")}
+          title="View engagement data"
+        >
+          <BarChart3 className="h-4 w-4" />
+        </Button>
         <AddProjectForm
           onAddProject={onAddProject}
           isSubmitting={isSubmitting}
