@@ -759,7 +759,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-6 text-center">
+      <div className="px-4 py-6 text-center flex flex-col gap-1">
         <a
           href="https://x.com/byornoste"
           target="_blank"
@@ -767,6 +767,14 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
           className="text-xs text-gray-400 hover:text-gray-600"
         >
           Built by Byorn
+        </a>
+        <a
+          href="https://github.com/0xVitae/ns-tools-atlas"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-gray-400 hover:text-gray-600"
+        >
+          Contribute on GitHub
         </a>
       </div>
 
