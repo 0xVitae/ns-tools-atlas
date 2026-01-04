@@ -1316,11 +1316,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                   const isHovered = hoveredItem === project.id;
                   const isSelected = selectedItem === project.id;
                   const isGreyedOut = selectedItem !== null && !isSelected;
-                  const baseSize = Math.min(
-                    90,
-                    Math.max(65, boxLayout.width / 4)
-                  );
-                  const displaySize = baseSize;
+                  const displaySize = 80; // Fixed size for all cards
 
                   return (
                     <HoverCard
