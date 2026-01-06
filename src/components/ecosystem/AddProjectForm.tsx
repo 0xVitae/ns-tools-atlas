@@ -55,6 +55,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   const [formDescription, setFormDescription] = useState("");
   const [formUrl, setFormUrl] = useState("");
   const [formGuideUrl, setFormGuideUrl] = useState("");
+  const [showGuideUrlInput, setShowGuideUrlInput] = useState(false);
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formEmoji, setFormEmoji] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -66,6 +67,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // NS Profile URLs state (max 3)
   const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>([]);
   const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
+  const [showNsProfileInput, setShowNsProfileInput] = useState(false);
 
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -210,8 +212,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim()));
   const showStep5 = showStep4 && Boolean(formDescription.trim());
 
-  const MAX_NS_PROFILE_URLS = 3;
-
   // Helper to add an NS Profile URL
   const handleAddNsProfileUrl = () => {
     const url = newNsProfileUrl.trim();
@@ -221,10 +221,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     }
     if (!isValidUrl(url)) {
       toast.error("Please enter a valid URL (http:// or https://)");
-      return;
-    }
-    if (formNsProfileUrls.length >= MAX_NS_PROFILE_URLS) {
-      toast.error(`Maximum ${MAX_NS_PROFILE_URLS} profile URLs allowed`);
       return;
     }
     if (formNsProfileUrls.includes(url)) {
@@ -363,8 +359,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setFormDescription("");
     setFormUrl("");
     setFormGuideUrl("");
+    setShowGuideUrlInput(false);
     setFormNsProfileUrls([]);
     setNewNsProfileUrl("");
+    setShowNsProfileInput(false);
     setFormImageUrl("");
     setFormEmoji(null);
     setFormProductImages([]);
@@ -683,20 +681,51 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     </p>
                   )}
                 </div>
+                {/* How to Guide - optional, toggle to show */}
                 <div>
-                  <Input
-                    type="url"
-                    placeholder="How to Guide (recommended)"
-                    value={formGuideUrl}
-                    onChange={(e) => setFormGuideUrl(e.target.value)}
-                    className={`h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
-                      formGuideUrl.trim()
-                        ? isGuideUrlValid
-                          ? "border-emerald-400 focus:border-emerald-400"
-                          : "border-red-400 focus:border-red-400"
-                        : ""
-                    }`}
-                  />
+                  {!showGuideUrlInput && !formGuideUrl.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowGuideUrlInput(true)}
+                      className="h-8 px-3 text-xs font-medium border border-border/60 rounded-md hover:bg-muted/50 transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Guide URL
+                    </button>
+                  )}
+                  {(showGuideUrlInput || formGuideUrl.trim()) && (
+                    <div className="flex gap-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                      <Input
+                        type="url"
+                        placeholder="How to Guide URL"
+                        value={formGuideUrl}
+                        onChange={(e) => setFormGuideUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape" && !formGuideUrl.trim()) {
+                            setShowGuideUrlInput(false);
+                          }
+                        }}
+                        className={`h-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
+                          formGuideUrl.trim()
+                            ? isGuideUrlValid
+                              ? "border-emerald-400 focus:border-emerald-400"
+                              : "border-red-400 focus:border-red-400"
+                            : ""
+                        }`}
+                        autoFocus={showGuideUrlInput && !formGuideUrl.trim()}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowGuideUrlInput(false);
+                          setFormGuideUrl("");
+                        }}
+                        className="h-9 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   {formGuideUrl.trim() && !isGuideUrlValid && (
                     <p className="text-xs text-red-500 mt-1">
                       Please enter a valid URL (http:// or https://)
@@ -709,66 +738,14 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     <label className="text-[11px] text-muted-foreground/70">
                       NS Profile URLs (optional)
                     </label>
-                    <span className="text-[10px] text-muted-foreground/50">
-                      {formNsProfileUrls.length}/{MAX_NS_PROFILE_URLS}
-                    </span>
+                    {formNsProfileUrls.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/50">
+                        {formNsProfileUrls.length} added
+                      </span>
+                    )}
                   </div>
 
-                  {/* URL Input Row */}
-                  {formNsProfileUrls.length < MAX_NS_PROFILE_URLS && (
-                    <div className="flex gap-2">
-                      <Input
-                        type="url"
-                        placeholder="Paste NS profile URL..."
-                        value={newNsProfileUrl}
-                        onChange={(e) => setNewNsProfileUrl(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddNsProfileUrl();
-                          }
-                        }}
-                        onPaste={(e) => {
-                          const pastedText = e.clipboardData
-                            .getData("text")
-                            .trim();
-                          if (
-                            pastedText &&
-                            (pastedText.startsWith("http://") ||
-                              pastedText.startsWith("https://"))
-                          ) {
-                            e.preventDefault();
-                            if (formNsProfileUrls.length >= MAX_NS_PROFILE_URLS) {
-                              toast.error(
-                                `Maximum ${MAX_NS_PROFILE_URLS} profile URLs allowed`
-                              );
-                              return;
-                            }
-                            if (formNsProfileUrls.includes(pastedText)) {
-                              toast.error("This URL is already added");
-                              return;
-                            }
-                            setFormNsProfileUrls([
-                              ...formNsProfileUrls,
-                              pastedText,
-                            ]);
-                          }
-                        }}
-                        className="h-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={handleAddNsProfileUrl}
-                        className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Added URLs List */}
+                  {/* Added URLs List - shown first */}
                   {formNsProfileUrls.length > 0 && (
                     <div className="space-y-1.5">
                       {formNsProfileUrls.map((url, index) => (
@@ -783,12 +760,94 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveNsProfileUrl(index)}
-                            className="w-5 h-5 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-colors shrink-0"
+                            className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Add button - shown when input is hidden */}
+                  {!showNsProfileInput && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNsProfileInput(true)}
+                      className="h-8 px-3 text-xs font-medium border border-border/60 rounded-md hover:bg-muted/50 transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Profile URL
+                    </button>
+                  )}
+
+                  {/* URL Input Row - shown when toggled */}
+                  {showNsProfileInput && (
+                    <div className="flex gap-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                      <Input
+                        type="url"
+                        placeholder="Paste NS profile URL..."
+                        value={newNsProfileUrl}
+                        onChange={(e) => setNewNsProfileUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNsProfileUrl();
+                            setShowNsProfileInput(false);
+                          }
+                          if (e.key === "Escape") {
+                            setShowNsProfileInput(false);
+                            setNewNsProfileUrl("");
+                          }
+                        }}
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData
+                            .getData("text")
+                            .trim();
+                          if (
+                            pastedText &&
+                            (pastedText.startsWith("http://") ||
+                              pastedText.startsWith("https://"))
+                          ) {
+                            e.preventDefault();
+                            if (formNsProfileUrls.includes(pastedText)) {
+                              toast.error("This URL is already added");
+                              return;
+                            }
+                            setFormNsProfileUrls([
+                              ...formNsProfileUrls,
+                              pastedText,
+                            ]);
+                            setShowNsProfileInput(false);
+                          }
+                        }}
+                        className="h-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
+                        autoFocus
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          handleAddNsProfileUrl();
+                          setShowNsProfileInput(false);
+                        }}
+                        className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowNsProfileInput(false);
+                          setNewNsProfileUrl("");
+                        }}
+                        className="h-9 px-2 text-xs font-medium hover:bg-muted/50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   )}
                 </div>
