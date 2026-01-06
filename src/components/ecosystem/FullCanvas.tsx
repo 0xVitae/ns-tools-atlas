@@ -1343,7 +1343,10 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             if (isSelected) {
-                              selectProject(null);
+                              // If already selected, open the website
+                              if (project.url) {
+                                window.open(project.url, '_blank', 'noopener,noreferrer');
+                              }
                             } else {
                               selectProject(project.id);
                             }
