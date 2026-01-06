@@ -158,6 +158,15 @@
     background: hsl(var(--muted-foreground) / 0.5);
   }
 
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Safe area insets for mobile devices with notches */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0);

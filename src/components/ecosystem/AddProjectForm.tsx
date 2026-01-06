@@ -489,8 +489,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // Form content shared between Popover and Drawer
   const formContent = (
     <>
-      {/* Header with Progress Bar Border */}
-      <div className="relative bg-muted/30">
+      {/* Header with Progress Bar Border - Fixed at top */}
+      <div className="relative bg-muted/30 flex-shrink-0">
             <div className="px-4 py-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground tracking-tight">
                 Add Project
@@ -519,7 +519,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
             </div>
           </div>
 
-          <div className="p-4 space-y-5">
+          {/* Scrollable content area */}
+          <div className="p-4 space-y-5 overflow-y-auto flex-1 scrollbar-hide">
             {/* STEP 1: Visual Identity */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -1065,8 +1066,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
             Add
           </Button>
         </DrawerTrigger>
-        <DrawerContent className="max-h-[90vh]">
-          <div className="overflow-y-auto pb-safe">
+        <DrawerContent className="max-h-[90vh] flex flex-col">
+          <div className="flex flex-col flex-1 overflow-hidden pb-safe">
             {isAuthenticated ? formContent : authContent}
           </div>
         </DrawerContent>
@@ -1089,7 +1090,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         <PopoverContent
           side="top"
           align="end"
-          className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl"
+          className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl max-h-[80vh] flex flex-col"
           sideOffset={8}
         >
           {isAuthenticated ? formContent : authContent}
