@@ -1,75 +1,81 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { google } from 'googleapis';
-
-// Environment variables (set in Vercel dashboard)
-const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
-const PENDING_SHEET_NAME = 'pending';
+import { getDb, projects } from './_db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check required env vars
-  if (!GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !SPREADSHEET_ID) {
-    console.error('Missing required environment variables');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-
   try {
-    const { name, category, description, url, guideUrl, nsProfileUrls, imageUrl, emoji, productImages, customCategoryName, customCategoryColor } = req.body;
+    const { name, category, description, url, guideUrl, nsProfileUrls, imageUrl, emoji, productImages, tags, customCategoryName, customCategoryColor } = req.body;
 
-    // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ error: 'Name is required' });
     }
-    // Category must be a non-empty string (can be existing or new custom category)
     if (!category || typeof category !== 'string' || category.trim().length === 0) {
       return res.status(400).json({ error: 'Category is required' });
     }
 
-    // Initialize Google Sheets client
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: GOOGLE_PRIVATE_KEY,
-      },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-
-    // Generate unique ID
     const id = `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const submittedAt = new Date().toISOString();
 
-    // Append row to pending sheet
-    // If it's a new category, prefix with ⭐ NEW: so admin can easily spot it
-    const categoryValue = customCategoryName ? `⭐ NEW: ${category}` : category;
+    // Parse pipe-separated strings from frontend into arrays
+    const parseArray = (val: unknown): string[] | null => {
+      if (!val) return null;
+      if (Array.isArray(val)) return val.filter(Boolean);
+      if (typeof val === 'string') return val.split('|').map(s => s.trim()).filter(Boolean);
+      return null;
+    };
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${PENDING_SHEET_NAME}!A:K`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[
-          id,
-          name.trim(),
-          categoryValue,
-          description?.trim() || '',
-          url?.trim() || '',
-          guideUrl?.trim() || '',
-          nsProfileUrls || '',  // Pipe-separated URLs (e.g., "url1|url2|url3")
-          imageUrl || '',
-          emoji || '',
-          productImages || '',  // Pipe-separated URLs (e.g., "img1.jpg|img2.jpg|img3.jpg")
-          submittedAt,
-        ]],
-      },
+    const db = getDb();
+    await db.insert(projects).values({
+      id,
+      name: name.trim(),
+      category: category.trim(),
+      description: description?.trim() || null,
+      url: url?.trim() || null,
+      guideUrl: guideUrl?.trim() || null,
+      imageUrl: imageUrl || null,
+      emoji: emoji || null,
+      nsProfileUrls: parseArray(nsProfileUrls),
+      productImages: parseArray(productImages),
+      tags: parseArray(tags),
+      addedAt: submittedAt,
+      status: 'active',
+      approvalStatus: 'pending',
+      customCategoryId: customCategoryName ? category : null,
+      customCategoryName: customCategoryName || null,
+      customCategoryColor: customCategoryColor || null,
     });
+
+    // Fire-and-forget Telegram notification
+    try {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const chatId = process.env.TELEGRAM_CHAT_ID;
+      const adminToken = process.env.ADMIN_TOKEN;
+      if (botToken && chatId) {
+        const desc = description?.trim()
+          ? description.trim().length > 120
+            ? description.trim().slice(0, 120) + '…'
+            : description.trim()
+          : 'No description';
+        const loginUrl = adminToken
+          ? `\nhttps://nstools.xyz/pending?token=${adminToken}`
+          : '';
+        const text =
+          `<b>New submission:</b> ${name.trim()}\n` +
+          `<b>Category:</b> ${category.trim()}\n` +
+          `<b>Description:</b> ${desc}` +
+          (loginUrl ? `\n\n<a href="${loginUrl.trim()}">Review now →</a>` : '');
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+        }).catch(() => {});
+      }
+    } catch {
+      // Never block submission response
+    }
 
     return res.status(200).json({ success: true, id });
   } catch (error) {

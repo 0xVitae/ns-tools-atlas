@@ -1,5 +1,17 @@
 export type ProjectTag = 'nsOfficial' | 'free' | 'paid';
 
+export type ProjectStatus = 'active' | 'dead';
+
+export interface ProjectRequest {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  submittedBy: string;
+  upvotes: number;
+  emoji?: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -25,6 +37,9 @@ export interface EcosystemProject {
   productImages?: string[];  // Array of product image URLs (max 3)
   customCategory?: CustomCategory;  // Present when suggesting a new category
   tags?: ProjectTag[];  // Tags for filtering and display (nsOfficial, free, paid)
+  status?: ProjectStatus;  // Project status (active by default, dead for graveyard)
+  postMortem?: string;     // Post-mortem / reason for shutdown (graveyard only)
+  addedAt?: string;        // Date the project was added
 }
 
 export interface CanvasState {

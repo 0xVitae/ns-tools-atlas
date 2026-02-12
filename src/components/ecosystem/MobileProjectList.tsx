@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { EcosystemProject, Category } from "@/types/ecosystem";
 import {
   buildCategoriesFromProjects,
@@ -6,7 +7,7 @@ import {
   getCategoryName,
   generateProjectSlug,
 } from "@/data/ecosystemData";
-import { ExternalLink, BookOpen, ChevronRight, Search, X, LayoutGrid, ListFilter } from "lucide-react";
+import { ExternalLink, BookOpen, ChevronRight, ChevronDown, Search, X, LayoutGrid, ListFilter, Skull, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +21,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
 import { ProjectTag } from "@/types/ecosystem";
 
@@ -366,6 +373,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   const [selectedProject, setSelectedProject] = useState<EcosystemProject | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [activeTagFilters, setActiveTagFilters] = useState<ProjectTag[]>([]);
+  const navigate = useNavigate();
 
   // Build categories from projects
   const categories = useMemo(() => {
@@ -518,6 +526,31 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               )}
+
+              {/* Status Views dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-gray-200 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="font-medium text-[13px]">Live Services</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem className="gap-2" disabled>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    Live Services
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => navigate("/graveyard")}>
+                    <Skull className="h-4 w-4 text-gray-400" />
+                    Graveyard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => navigate("/requests")}>
+                    <Lightbulb className="h-4 w-4 text-amber-500" />
+                    Requests
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Add Project Button */}
               <AddProjectForm
@@ -776,6 +809,14 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
         >
           Contribute on GitHub
         </a>
+        <a
+          href="https://cal.com/byorn/15min?user=byorn"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-gray-400 hover:text-gray-600"
+        >
+          Book Office Hours
+        </a>
       </div>
 
       {/* Project Detail Drawer */}
@@ -785,6 +826,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
         onClose={() => selectProject(null)}
         categories={categories}
       />
+
     </div>
   );
 };

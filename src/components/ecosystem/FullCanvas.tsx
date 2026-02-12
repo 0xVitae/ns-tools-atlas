@@ -20,9 +20,12 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   List,
   ListFilter,
   BarChart3,
+  Skull,
+  Lightbulb,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,12 @@ import ActionSearchBar, {
   Action,
   ActionSearchBarRef,
 } from "@/components/kokonutui/action-search-bar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
 
 interface FullCanvasProps {
@@ -1133,6 +1142,33 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* Status Views dropdown */}
+        <div className="hidden md:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="font-medium">Live Services</span>
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem className="gap-2" disabled>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                Live Services
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => navigate("/graveyard")}>
+                <Skull className="h-4 w-4 text-gray-400" />
+                Graveyard
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => navigate("/requests")}>
+                <Lightbulb className="h-4 w-4 text-amber-500" />
+                Requests
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Zoom Controls - Stacked below top bar */}
@@ -1230,6 +1266,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           className="hover:text-foreground transition-colors"
         >
           ⭐ Contribute on GitHub
+        </a>
+        <a
+          href="https://cal.com/byorn/15min?user=byorn"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-foreground transition-colors"
+        >
+          📅 Book Office Hours
         </a>
       </div>
 
