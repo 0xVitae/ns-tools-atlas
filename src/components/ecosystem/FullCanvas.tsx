@@ -140,8 +140,8 @@ const GAP = 24;
 const TITLE_HEIGHT = 90;
 const MIN_BOX_WIDTH = 180; // Smaller minimum for 1-2 items
 const MIN_BOX_HEIGHT = 140; // Smaller minimum height
-const CELL_WIDTH = 100; // Width per item cell
-const CELL_HEIGHT = 95; // Height per item cell (icon + label + spacing)
+const CELL_WIDTH = 115; // Width per item cell
+const CELL_HEIGHT = 105; // Height per item cell (icon + label + spacing)
 const ITEMS_PER_ROW_BASE = 3; // 3 items per row for more vertical growth
 
 // Calculate box dimensions based on project count
@@ -414,97 +414,103 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     return x - Math.floor(x);
   };
 
-  // Calculate positions using rejection sampling - try random positions until no collision
+  // Physics-based repulsion layout: items repel each other but stay inside the box
   const calculateCategoryPositions = (
     categoryProjects: EcosystemProject[],
     boxWidth: number,
     boxHeight: number,
-    baseSize: number
+    _baseSize: number
   ): Record<string, { x: number; y: number }> => {
     if (categoryProjects.length === 0) return {};
 
-    // Usable area bounds - minimal padding to maximize space
-    const padding = 10;
+    const padding = 15;
     const topPadding = 35;
+    // Account for full card + label size (80px wide card, 100px label, ~78px tall total)
+    const itemHalfW = 55;
+    const itemHalfH = 45;
 
-    // Minimum distance between item centers
-    // Card is baseSize wide, ~baseSize*0.72 tall, plus label (~20px) below
-    const cardWidth = baseSize;
-    const cardHeight = baseSize * 0.72 + 20; // card + label
-    const minDistance = Math.max(cardWidth, cardHeight) + 8; // small buffer
+    const minX = padding + itemHalfW;
+    const maxX = boxWidth - padding - itemHalfW;
+    const minY = topPadding + itemHalfH;
+    const maxY = boxHeight - padding - itemHalfH;
 
-    // Bounds for item centers
-    const halfWidth = cardWidth / 2;
-    const halfHeight = cardHeight / 2;
-    const minX = padding + halfWidth;
-    const maxX = boxWidth - padding - halfWidth;
-    const minY = topPadding + halfHeight;
-    const maxY = boxHeight - padding - halfHeight;
+    const count = categoryProjects.length;
+
+    // Single item: just center it
+    if (count === 1) {
+      return { [categoryProjects[0].id]: { x: boxWidth / 2, y: (topPadding + boxHeight) / 2 } };
+    }
+
+    // Initialize positions deterministically spread across usable area
+    const points: { x: number; y: number }[] = categoryProjects.map((p, i) => {
+      const seed = hashString(p.id);
+      return {
+        x: minX + seededRandom(seed) * Math.max(1, maxX - minX),
+        y: minY + seededRandom(seed + 1) * Math.max(1, maxY - minY),
+      };
+    });
+
+    // Desired minimum distance between centers (based on card+label footprint)
+    const restDist = 115;
+
+    // Run simulation
+    const iterations = 150;
+    let damping = 0.3;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      const forces = points.map(() => ({ fx: 0, fy: 0 }));
+
+      // Pairwise repulsion
+      for (let i = 0; i < count; i++) {
+        for (let j = i + 1; j < count; j++) {
+          let dx = points[i].x - points[j].x;
+          let dy = points[i].y - points[j].y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 0.1) {
+            // Nudge apart if exactly overlapping
+            dx = (seededRandom(i * 100 + j) - 0.5) * 2;
+            dy = (seededRandom(j * 100 + i) - 0.5) * 2;
+            dist = Math.sqrt(dx * dx + dy * dy);
+          }
+
+          if (dist < restDist) {
+            const overlap = restDist - dist;
+            const force = overlap * 0.5;
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            forces[i].fx += nx * force;
+            forces[i].fy += ny * force;
+            forces[j].fx -= nx * force;
+            forces[j].fy -= ny * force;
+          }
+        }
+      }
+
+      // Gentle pull toward center to keep group compact
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      for (let i = 0; i < count; i++) {
+        forces[i].fx += (cx - points[i].x) * 0.02;
+        forces[i].fy += (cy - points[i].y) * 0.02;
+      }
+
+      // Apply forces and clamp to bounds
+      for (let i = 0; i < count; i++) {
+        points[i].x += forces[i].fx * damping;
+        points[i].y += forces[i].fy * damping;
+        points[i].x = Math.max(minX, Math.min(maxX, points[i].x));
+        points[i].y = Math.max(minY, Math.min(maxY, points[i].y));
+      }
+
+      damping *= 0.995;
+    }
 
     const positions: Record<string, { x: number; y: number }> = {};
-    const placedPoints: { x: number; y: number }[] = [];
-
-    // Check if a point collides with any existing points
-    const hasCollision = (x: number, y: number): boolean => {
-      for (const pt of placedPoints) {
-        const dx = x - pt.x;
-        const dy = y - pt.y;
-        if (Math.sqrt(dx * dx + dy * dy) < minDistance) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    // Place each project
-    for (const project of categoryProjects) {
-      const seed = hashString(project.id);
-      let placed = false;
-      let x = 0, y = 0;
-
-      // Try up to 500 random positions
-      for (let attempt = 0; attempt < 500 && !placed; attempt++) {
-        // Generate deterministic random position based on project ID + attempt
-        x = minX + seededRandom(seed + attempt * 2) * Math.max(1, maxX - minX);
-        y = minY + seededRandom(seed + attempt * 2 + 1) * Math.max(1, maxY - minY);
-
-        if (!hasCollision(x, y)) {
-          placed = true;
-        }
-      }
-
-      // If still not placed after 500 attempts, find best available spot
-      if (!placed) {
-        let bestX = (minX + maxX) / 2;
-        let bestY = (minY + maxY) / 2;
-        let bestMinDist = 0;
-
-        // Try 100 more positions and pick the one with maximum distance from others
-        for (let i = 0; i < 100; i++) {
-          const testX = minX + seededRandom(seed + 1000 + i * 2) * Math.max(1, maxX - minX);
-          const testY = minY + seededRandom(seed + 1000 + i * 2 + 1) * Math.max(1, maxY - minY);
-
-          let minDist = Infinity;
-          for (const pt of placedPoints) {
-            const dx = testX - pt.x;
-            const dy = testY - pt.y;
-            minDist = Math.min(minDist, Math.sqrt(dx * dx + dy * dy));
-          }
-
-          if (minDist > bestMinDist) {
-            bestMinDist = minDist;
-            bestX = testX;
-            bestY = testY;
-          }
-        }
-
-        x = bestX;
-        y = bestY;
-      }
-
-      positions[project.id] = { x, y };
-      placedPoints.push({ x, y });
-    }
+    categoryProjects.forEach((project, i) => {
+      positions[project.id] = { x: points[i].x, y: points[i].y };
+    });
 
     return positions;
   };
