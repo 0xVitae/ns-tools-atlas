@@ -2,6 +2,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq } from 'drizzle-orm';
 import { getDb, projects, projectRequests } from './_db.js';
 
+// Columns that are arrays in the schema and need string→array conversion
+const ARRAY_COLUMNS = new Set(['nsProfileUrls', 'productImages', 'tags']);
+
+function coerceValue(column: string, value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (ARRAY_COLUMNS.has(column)) {
+    if (Array.isArray(value)) return value;
+    // Convert comma-separated string to array
+    return String(value).split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return value;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -39,15 +52,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'column is required for updates' });
     }
 
+    const coerced = coerceValue(column, value);
+
     if (table === 'projects') {
+      if (!(column in projects)) {
+        return res.status(400).json({ error: `Invalid column: ${column}` });
+      }
       await db
         .update(projects)
-        .set({ [column]: value })
+        .set({ [column]: coerced } as any)
         .where(eq(projects.id, id));
     } else if (table === 'requests') {
+      if (!(column in projectRequests)) {
+        return res.status(400).json({ error: `Invalid column: ${column}` });
+      }
       await db
         .update(projectRequests)
-        .set({ [column]: value })
+        .set({ [column]: coerced } as any)
         .where(eq(projectRequests.id, id));
     } else if (table === 'upvotes') {
       return res.status(400).json({ error: 'Upvotes table is not editable' });
@@ -56,8 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Admin update error:', error);
-    return res.status(500).json({ error: 'Failed to update' });
+    return res.status(500).json({ error: error?.message || 'Failed to update' });
   }
 }

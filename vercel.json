@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|src/|@vite|@react-refresh|node_modules|favicon).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/projects.ts": {
