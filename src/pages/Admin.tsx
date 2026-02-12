@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Database, FolderOpen, Lightbulb, ThumbsUp, Check, X } from "lucide-react";
+import { ArrowLeft, Database, FolderOpen, Lightbulb, ThumbsUp, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +59,22 @@ async function updateCell(
   if (!response.ok) {
     const data = await response.json();
     throw new Error(data.error || "Update failed");
+  }
+}
+
+async function deleteRow(
+  creds: { password?: string; token?: string },
+  table: string,
+  id: string
+) {
+  const response = await fetch("/api/admin-update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(creds) },
+    body: JSON.stringify({ table, id, action: "delete" }),
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || "Delete failed");
   }
 }
 
@@ -173,12 +189,14 @@ function DataTable({
   rows,
   editable,
   onSave,
+  onDelete,
   groupBy,
   hiddenColumns = [],
 }: {
   rows: Record<string, unknown>[];
   editable: boolean;
   onSave: (id: string, column: string, value: string | null) => Promise<void>;
+  onDelete?: (id: string, name: string) => void;
   groupBy?: string;
   hiddenColumns?: string[];
 }) {
@@ -210,7 +228,18 @@ function DataTable({
 
   const renderRows = (groupRows: Record<string, unknown>[]) =>
     groupRows.map((row, i) => (
-      <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50">
+      <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50 group">
+        {onDelete && (
+          <td className="px-2 py-2 text-center border-r border-gray-50">
+            <button
+              onClick={() => onDelete(String(row.id ?? row.requestId), String(row.name ?? row.id))}
+              className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
+              title="Delete row"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </td>
+        )}
         {columns.map((col) => {
           const isIdCol = col === "id" || col === "requestId" || col === "voterId";
           const cellEditable = editable && !isIdCol;
@@ -232,6 +261,9 @@ function DataTable({
       <table className="w-full text-left text-[12px] border-collapse">
         <thead className="sticky top-0 z-10">
           <tr className="bg-gray-50 border-b border-gray-200">
+            {onDelete && (
+              <th className="w-10 bg-gray-50 border-r border-gray-100" />
+            )}
             {columns.map((col) => (
               <th key={col} className="px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap bg-gray-50 border-r border-gray-100 last:border-r-0">
                 {col}
@@ -244,7 +276,7 @@ function DataTable({
             <React.Fragment key={group.label}>
               {groupBy && (
                 <tr className="bg-gray-100/80">
-                  <td colSpan={columns.length} className="px-3 py-2">
+                  <td colSpan={columns.length + (onDelete ? 1 : 0)} className="px-3 py-2">
                     <span className={`inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide ${STATUS_COLORS[group.label] || "text-gray-600"} px-2 py-0.5 rounded`}>
                       {group.label}
                       <span className="font-normal text-[11px] opacity-70">({group.rows.length})</span>
@@ -308,6 +340,19 @@ const Admin: React.FC = () => {
     async (id: string, column: string, value: string | null) => {
       await updateCell(creds, TABLE_MAP[activeTab], id, column, value);
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+    },
+    [creds, activeTab, queryClient]
+  );
+
+  const handleDelete = useCallback(
+    (id: string, name: string) => {
+      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+      deleteRow(creds, TABLE_MAP[activeTab], id)
+        .then(() => {
+          toast.success(`Deleted "${name}"`);
+          queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+        })
+        .catch((e) => toast.error(e.message || "Delete failed"));
     },
     [creds, activeTab, queryClient]
   );
@@ -401,6 +446,7 @@ const Admin: React.FC = () => {
             rows={tableData[activeTab]}
             editable={activeTab !== "upvotes"}
             onSave={handleSave}
+            onDelete={activeTab !== "upvotes" ? handleDelete : undefined}
             groupBy={activeTab === "projects" ? "approvalStatus" : undefined}
             hiddenColumns={HIDDEN_COLUMNS[activeTab]}
           />
