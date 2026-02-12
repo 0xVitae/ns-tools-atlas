@@ -159,7 +159,7 @@ const calculateBoxSize = (projectCount: number) => {
 // Simple column-based layout algorithm
 const calculateLayout = (
   categories: Category[],
-  projectsByCategory: Record<string, EcosystemProject[]>
+  projectsByCategory: Record<string, EcosystemProject[]>,
 ) => {
   const layout: Record<
     string,
@@ -169,8 +169,8 @@ const calculateLayout = (
   // Only include categories that have at least one project
   const allCategoryIds = new Set(
     Object.keys(projectsByCategory).filter(
-      (categoryId) => projectsByCategory[categoryId]?.length > 0
-    )
+      (categoryId) => projectsByCategory[categoryId]?.length > 0,
+    ),
   );
 
   // Calculate sizes for each category
@@ -276,8 +276,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     const checkTouchDevice = () => {
       setIsTouchDevice(
         "ontouchstart" in window ||
-        navigator.maxTouchPoints > 0 ||
-        window.matchMedia("(pointer: coarse)").matches
+          navigator.maxTouchPoints > 0 ||
+          window.matchMedia("(pointer: coarse)").matches,
       );
     };
     checkTouchDevice();
@@ -292,17 +292,20 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   const filteredProjects = useMemo(() => {
     if (activeTagFilters.length === 0) return projects;
     return projects.filter((project) =>
-      project.tags?.some((tag) => activeTagFilters.includes(tag))
+      project.tags?.some((tag) => activeTagFilters.includes(tag)),
     );
   }, [projects, activeTagFilters]);
 
   // Group filtered projects by category
   const projectsByCategory = useMemo(() => {
-    return filteredProjects.reduce((acc, project) => {
-      if (!acc[project.category]) acc[project.category] = [];
-      acc[project.category].push(project);
-      return acc;
-    }, {} as Record<string, EcosystemProject[]>);
+    return filteredProjects.reduce(
+      (acc, project) => {
+        if (!acc[project.category]) acc[project.category] = [];
+        acc[project.category].push(project);
+        return acc;
+      },
+      {} as Record<string, EcosystemProject[]>,
+    );
   }, [filteredProjects]);
 
   // Convert projects to search actions
@@ -351,7 +354,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     const centerCanvas = () => {
       if (typeof window !== "undefined") {
         // Use 50% zoom on mobile/touch devices for better overview
-        const isMobile = window.innerWidth < 768 ||
+        const isMobile =
+          window.innerWidth < 768 ||
           "ontouchstart" in window ||
           navigator.maxTouchPoints > 0;
         const scale = isMobile ? 0.5 : 1;
@@ -377,7 +381,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   // Toggle a tag filter on/off
   const toggleTagFilter = (tag: ProjectTag) => {
     setActiveTagFilters((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
@@ -419,7 +423,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     categoryProjects: EcosystemProject[],
     boxWidth: number,
     boxHeight: number,
-    _baseSize: number
+    _baseSize: number,
   ): Record<string, { x: number; y: number }> => {
     if (categoryProjects.length === 0) return {};
 
@@ -438,7 +442,12 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
     // Single item: just center it
     if (count === 1) {
-      return { [categoryProjects[0].id]: { x: boxWidth / 2, y: (topPadding + boxHeight) / 2 } };
+      return {
+        [categoryProjects[0].id]: {
+          x: boxWidth / 2,
+          y: (topPadding + boxHeight) / 2,
+        },
+      };
     }
 
     // Initialize positions deterministically spread across usable area
@@ -529,7 +538,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         categoryProjects,
         boxLayout.width,
         boxLayout.height,
-        baseSize
+        baseSize,
       );
     });
 
@@ -567,14 +576,18 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       setSelectedItem(project.id);
       setHoveredItem(project.id);
     },
-    [projects, dynamicLayout, categoryPositions, applyTransform]
+    [projects, dynamicLayout, categoryPositions, applyTransform],
   );
 
   // Clear selection when clicking on canvas background
   const clearSelection = useCallback(() => {
     setSelectedItem(null);
     // Clear the URL hash
-    history.replaceState(null, "", window.location.pathname + window.location.search);
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
   }, []);
 
   // Ensure hover card is visible by zooming out if necessary
@@ -645,11 +658,17 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         }
 
         // Scale for horizontal overflow
-        if (hoverCardLeft < minVisibleLeft || hoverCardRight > maxVisibleRight) {
+        if (
+          hoverCardLeft < minVisibleLeft ||
+          hoverCardRight > maxVisibleRight
+        ) {
           const neededWidth = hoverCardWidth + 2 * buffer;
           if (neededWidth > rect.width) {
             // Need to zoom out to fit width
-            newScale = Math.min(scale, (rect.width - 2 * buffer) / hoverCardWidth * scale);
+            newScale = Math.min(
+              scale,
+              ((rect.width - 2 * buffer) / hoverCardWidth) * scale,
+            );
           }
           // Center horizontally
           transformRef.current.x = rect.width / 2 - projectX * newScale;
@@ -675,7 +694,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         applyTransform();
       }
     },
-    [dynamicLayout, categoryPositions, applyTransform]
+    [dynamicLayout, categoryPositions, applyTransform],
   );
 
   // Select a project and update the URL hash
@@ -691,10 +710,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           ensureHoverCardVisible(project);
         }
       } else {
-        history.replaceState(null, "", window.location.pathname + window.location.search);
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
       }
     },
-    [projects, ensureHoverCardVisible]
+    [projects, ensureHoverCardVisible],
   );
 
   // Find project by URL hash slug
@@ -702,7 +725,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     (slug: string): EcosystemProject | undefined => {
       return projects.find((p) => generateProjectSlug(p.name) === slug);
     },
-    [projects]
+    [projects],
   );
 
   // Handle URL hash on mount and hash changes
@@ -773,7 +796,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         applyTransform();
       });
     },
-    [applyTransform]
+    [applyTransform],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -786,7 +809,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   // Touch helper functions for pinch-to-zoom
   const getTouchDistance = (t1: React.Touch, t2: React.Touch) => {
     return Math.sqrt(
-      Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2)
+      Math.pow(t2.clientX - t1.clientX, 2) +
+        Math.pow(t2.clientY - t1.clientY, 2),
     );
   };
 
@@ -824,7 +848,11 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         cancelAnimationFrame(rafIdRef.current);
       }
 
-      if (e.touches.length === 1 && isTouchPanningRef.current && lastTouchRef.current) {
+      if (
+        e.touches.length === 1 &&
+        isTouchPanningRef.current &&
+        lastTouchRef.current
+      ) {
         // Single touch pan
         const touch = e.touches[0];
         const deltaX = touch.clientX - lastTouchRef.current.x;
@@ -837,7 +865,11 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         });
 
         lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
-      } else if (e.touches.length === 2 && lastPinchDistRef.current !== null && lastPinchCenterRef.current !== null) {
+      } else if (
+        e.touches.length === 2 &&
+        lastPinchDistRef.current !== null &&
+        lastPinchCenterRef.current !== null
+      ) {
         // Two finger pinch zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
@@ -845,7 +877,10 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         const newCenter = getTouchCenter(t1, t2);
 
         const scaleFactor = newDist / lastPinchDistRef.current;
-        const newScale = Math.max(0.5, Math.min(2, transformRef.current.scale * scaleFactor));
+        const newScale = Math.max(
+          0.5,
+          Math.min(2, transformRef.current.scale * scaleFactor),
+        );
 
         const container = containerRef.current;
         if (container) {
@@ -860,8 +895,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           rafIdRef.current = requestAnimationFrame(() => {
             // Apply zoom around pinch center
             const scaleChange = newScale / transformRef.current.scale;
-            transformRef.current.x = centerX - (centerX - transformRef.current.x) * scaleChange + panDeltaX;
-            transformRef.current.y = centerY - (centerY - transformRef.current.y) * scaleChange + panDeltaY;
+            transformRef.current.x =
+              centerX -
+              (centerX - transformRef.current.x) * scaleChange +
+              panDeltaX;
+            transformRef.current.y =
+              centerY -
+              (centerY - transformRef.current.y) * scaleChange +
+              panDeltaY;
             transformRef.current.scale = newScale;
             applyTransform();
             setDisplayScale(Math.round(newScale * 100));
@@ -872,7 +913,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         lastPinchCenterRef.current = newCenter;
       }
     },
-    [applyTransform]
+    [applyTransform],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -898,7 +939,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
   const resetView = useCallback(() => {
     // Use 50% zoom on mobile/touch devices
-    const isMobile = window.innerWidth < 768 ||
+    const isMobile =
+      window.innerWidth < 768 ||
       "ontouchstart" in window ||
       navigator.maxTouchPoints > 0;
     const scale = isMobile ? 0.5 : 1;
@@ -934,7 +976,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         const delta = e.deltaY > 0 ? 0.97 : 1.03;
         const newScale = Math.max(
           0.5,
-          Math.min(2, transformRef.current.scale * delta)
+          Math.min(2, transformRef.current.scale * delta),
         );
 
         const rect = container.getBoundingClientRect();
@@ -1150,30 +1192,36 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         </div>
 
         {/* Status Views dropdown */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="font-medium">Live Services</span>
+                <span className="font-medium">Available</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuItem className="gap-2" disabled>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                Live Services
+                Live
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onClick={() => navigate("/graveyard")}>
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={() => navigate("/graveyard")}
+              >
                 <Skull className="h-4 w-4 text-gray-400" />
                 Graveyard
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onClick={() => navigate("/requests")}>
-                <Lightbulb className="h-4 w-4 text-amber-500" />
-                Requests
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <button
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => navigate("/requests")}
+          >
+            <Lightbulb className="h-4 w-4 text-amber-500" />
+            <span className="font-medium">Requests</span>
+          </button>
         </div>
       </div>
 
@@ -1285,7 +1333,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
       {/* Canvas hint */}
       <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
-        {isTouchDevice ? "Drag to pan • Pinch to zoom" : "Drag to pan • Scroll to zoom"}
+        {isTouchDevice
+          ? "Drag to pan • Pinch to zoom"
+          : "Drag to pan • Scroll to zoom"}
       </div>
 
       {/* Canvas */}
@@ -1395,7 +1445,11 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             if (isSelected) {
                               // If already selected, open the website
                               if (project.url) {
-                                window.open(project.url, '_blank', 'noopener,noreferrer');
+                                window.open(
+                                  project.url,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
                               }
                             } else {
                               selectProject(project.id);
@@ -1418,8 +1472,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               boxShadow: isSelected
                                 ? "0 8px 24px rgba(0,0,0,0.2)"
                                 : isHovered
-                                ? "0 6px 16px rgba(0,0,0,0.12)"
-                                : "none",
+                                  ? "0 6px 16px rgba(0,0,0,0.12)"
+                                  : "none",
                             }}
                           >
                             {project.imageUrl ? (
@@ -1440,8 +1494,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               color: isSelected
                                 ? colors.text
                                 : isHovered
-                                ? colors.text
-                                : "#333",
+                                  ? colors.text
+                                  : "#333",
                               fontWeight: isSelected || isHovered ? 600 : 400,
                             }}
                           >
@@ -1573,26 +1627,32 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                           </div>
 
                           {/* NS Profile Links */}
-                          {project.nsProfileUrls && project.nsProfileUrls.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 -mt-1">
-                              {project.nsProfileUrls.map((profileUrl, idx) => {
-                                // Extract username from URL like https://ns.com/alexignatov
-                                const username = profileUrl.split('/').pop() || profileUrl;
-                                return (
-                                  <a
-                                    key={idx}
-                                    href={profileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <span className="text-primary">@{username}</span>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          )}
+                          {project.nsProfileUrls &&
+                            project.nsProfileUrls.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 -mt-1">
+                                {project.nsProfileUrls.map(
+                                  (profileUrl, idx) => {
+                                    // Extract username from URL like https://ns.com/alexignatov
+                                    const username =
+                                      profileUrl.split("/").pop() || profileUrl;
+                                    return (
+                                      <a
+                                        key={idx}
+                                        href={profileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <span className="text-primary">
+                                          @{username}
+                                        </span>
+                                      </a>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            )}
 
                           {/* Product Images Carousel */}
                           {project.productImages &&

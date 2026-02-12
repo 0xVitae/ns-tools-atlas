@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import BuiltByFooter from "@/components/BuiltByFooter";
 
 const UPVOTE_STORAGE_KEY = "ns-atlas-upvoted-requests";
 const VOTER_ID_KEY = "ns-atlas-voter-id";
@@ -261,6 +262,7 @@ const Requests: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+      <BuiltByFooter />
     </div>
   );
 };

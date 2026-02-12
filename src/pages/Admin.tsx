@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Database, FolderOpen, Lightbulb, ThumbsUp, Check, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Database, FolderOpen, Lightbulb, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +9,21 @@ import { toast } from "sonner";
 
 const ADMIN_PW_KEY = "ns-atlas-admin-pw";
 
-type TabId = "projects" | "requests" | "upvotes";
+type TabId = "projects" | "requests";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "projects", label: "Projects", icon: <FolderOpen className="h-3.5 w-3.5" /> },
   { id: "requests", label: "Requests", icon: <Lightbulb className="h-3.5 w-3.5" /> },
-  { id: "upvotes", label: "Upvotes", icon: <ThumbsUp className="h-3.5 w-3.5" /> },
 ];
 
 const TABLE_MAP: Record<TabId, string> = {
   projects: "projects",
   requests: "requests",
-  upvotes: "upvotes",
 };
 
 const HIDDEN_COLUMNS: Record<TabId, string[]> = {
   projects: ["id", "customCategoryId", "customCategoryName", "customCategoryColor"],
   requests: [],
-  upvotes: [],
 };
 
 function getAuthHeaders(creds: { password?: string; token?: string }) {
@@ -82,15 +79,18 @@ function EditableCell({
   value,
   onSave,
   editable,
+  options,
 }: {
   value: unknown;
   onSave: (newValue: string | null) => Promise<void>;
   editable: boolean;
+  options?: string[];
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
 
   const display =
     value === null || value === undefined
@@ -100,11 +100,15 @@ function EditableCell({
       : String(value);
 
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    if (editing) {
+      if (options && selectRef.current) {
+        selectRef.current.focus();
+      } else if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
     }
-  }, [editing]);
+  }, [editing, options]);
 
   const startEditing = () => {
     if (!editable) return;
@@ -118,10 +122,11 @@ function EditableCell({
     setEditing(true);
   };
 
-  const save = async () => {
+  const save = async (val?: string) => {
+    const saveVal = val !== undefined ? val : editValue;
     setSaving(true);
     try {
-      const newVal = editValue.trim() === "" ? null : editValue;
+      const newVal = saveVal.trim() === "" ? null : saveVal;
       await onSave(newVal);
       setEditing(false);
       toast.success("Updated");
@@ -143,6 +148,29 @@ function EditableCell({
   };
 
   if (editing) {
+    if (options) {
+      return (
+        <div className="flex items-center gap-1 min-w-[120px]">
+          <select
+            ref={selectRef}
+            value={editValue}
+            onChange={(e) => {
+              setEditValue(e.target.value);
+              save(e.target.value);
+            }}
+            onKeyDown={(e) => { if (e.key === "Escape") cancel(); }}
+            onBlur={cancel}
+            className="w-full px-1.5 py-1 text-[12px] border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            disabled={saving}
+          >
+            {options.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-1 min-w-[120px]">
         <textarea
@@ -179,11 +207,17 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "bg-green-100 text-green-800",
   pending: "bg-yellow-100 text-yellow-800",
   rejected: "bg-red-100 text-red-800",
+  graveyard: "bg-gray-200 text-gray-600",
   active: "bg-blue-100 text-blue-800",
   dead: "bg-gray-200 text-gray-600",
 };
 
-const STATUS_ORDER = ["pending", "approved", "rejected"];
+const STATUS_ORDER = ["pending", "approved", "rejected", "graveyard"];
+
+const STATUS_OPTIONS: Record<string, string[]> = {
+  status: ["active", "dead"],
+  approvalStatus: ["approved", "pending", "rejected"],
+};
 
 function DataTable({
   rows,
@@ -210,7 +244,7 @@ function DataTable({
   if (groupBy) {
     const grouped: Record<string, Record<string, unknown>[]> = {};
     for (const row of rows) {
-      const key = String(row[groupBy] ?? "unknown");
+      const key = row["status"] === "dead" ? "graveyard" : String(row[groupBy] ?? "unknown");
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(row);
     }
@@ -249,6 +283,7 @@ function DataTable({
                 value={row[col]}
                 editable={cellEditable}
                 onSave={(newValue) => onSave(String(row.id ?? row.requestId), col, newValue)}
+                options={cellEditable ? STATUS_OPTIONS[col] : undefined}
               />
             </td>
           );
@@ -386,18 +421,15 @@ const Admin: React.FC = () => {
 
   const projectRows = data?.projects || [];
   const requestRows = data?.requests || [];
-  const upvoteRows = data?.upvotes || [];
 
   const counts: Record<TabId, number> = {
     projects: projectRows.length,
     requests: requestRows.length,
-    upvotes: upvoteRows.length,
   };
 
   const tableData: Record<TabId, Record<string, unknown>[]> = {
     projects: projectRows,
     requests: requestRows,
-    upvotes: upvoteRows,
   };
 
   return (
@@ -444,9 +476,9 @@ const Admin: React.FC = () => {
         ) : (
           <DataTable
             rows={tableData[activeTab]}
-            editable={activeTab !== "upvotes"}
+            editable
             onSave={handleSave}
-            onDelete={activeTab !== "upvotes" ? handleDelete : undefined}
+            onDelete={handleDelete}
             groupBy={activeTab === "projects" ? "approvalStatus" : undefined}
             hiddenColumns={HIDDEN_COLUMNS[activeTab]}
           />

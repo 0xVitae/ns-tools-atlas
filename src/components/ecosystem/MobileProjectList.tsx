@@ -7,7 +7,18 @@ import {
   getCategoryName,
   generateProjectSlug,
 } from "@/data/ecosystemData";
-import { ExternalLink, BookOpen, ChevronRight, ChevronDown, Search, X, LayoutGrid, ListFilter, Skull, Lightbulb } from "lucide-react";
+import {
+  ExternalLink,
+  BookOpen,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  X,
+  LayoutGrid,
+  ListFilter,
+  Skull,
+  Lightbulb,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -95,10 +106,7 @@ const ProjectCard: React.FC<{
         ) : project.emoji ? (
           <span className="text-lg">{project.emoji}</span>
         ) : (
-          <span
-            className="text-xs font-bold"
-            style={{ color: colors.text }}
-          >
+          <span className="text-xs font-bold" style={{ color: colors.text }}>
             {getInitials(project.name)}
           </span>
         )}
@@ -270,7 +278,7 @@ const ProjectDetailDrawer: React.FC<{
               <div className="flex flex-wrap gap-2">
                 {project.nsProfileUrls.map((profileUrl, idx) => {
                   // Extract username from URL like https://ns.com/alexignatov
-                  const username = profileUrl.split('/').pop() || profileUrl;
+                  const username = profileUrl.split("/").pop() || profileUrl;
                   return (
                     <a
                       key={idx}
@@ -294,7 +302,9 @@ const ProjectDetailDrawer: React.FC<{
             {project.productImages && project.productImages.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-900">Screenshots</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    Screenshots
+                  </h4>
                   {project.productImages.length > 1 && (
                     <span className="text-xs text-gray-400">
                       {currentImageIndex + 1} / {project.productImages.length}
@@ -370,8 +380,11 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   onViewModeChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProject, setSelectedProject] = useState<EcosystemProject | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [selectedProject, setSelectedProject] =
+    useState<EcosystemProject | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
   const [activeTagFilters, setActiveTagFilters] = useState<ProjectTag[]>([]);
   const navigate = useNavigate();
 
@@ -383,7 +396,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   // Toggle a tag filter on/off
   const toggleTagFilter = (tag: ProjectTag) => {
     setActiveTagFilters((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
@@ -394,7 +407,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
     // Filter by tags first (OR logic)
     if (activeTagFilters.length > 0) {
       result = result.filter((project) =>
-        project.tags?.some((tag) => activeTagFilters.includes(tag))
+        project.tags?.some((tag) => activeTagFilters.includes(tag)),
       );
     }
 
@@ -404,7 +417,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.description?.toLowerCase().includes(query)
+          p.description?.toLowerCase().includes(query),
       );
     }
 
@@ -413,17 +426,20 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
 
   // Group projects by category
   const projectsByCategory = useMemo(() => {
-    return filteredProjects.reduce((acc, project) => {
-      if (!acc[project.category]) acc[project.category] = [];
-      acc[project.category].push(project);
-      return acc;
-    }, {} as Record<string, EcosystemProject[]>);
+    return filteredProjects.reduce(
+      (acc, project) => {
+        if (!acc[project.category]) acc[project.category] = [];
+        acc[project.category].push(project);
+        return acc;
+      },
+      {} as Record<string, EcosystemProject[]>,
+    );
   }, [filteredProjects]);
 
   // Get sorted category IDs (by number of projects)
   const sortedCategoryIds = useMemo(() => {
     return Object.keys(projectsByCategory).sort(
-      (a, b) => projectsByCategory[b].length - projectsByCategory[a].length
+      (a, b) => projectsByCategory[b].length - projectsByCategory[a].length,
     );
   }, [projectsByCategory]);
 
@@ -447,25 +463,26 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   }, [sortedCategoryIds, expandedCategories.size]);
 
   // Select a project and update the URL hash
-  const selectProject = useCallback(
-    (project: EcosystemProject | null) => {
-      setSelectedProject(project);
-      if (project) {
-        const slug = generateProjectSlug(project.name);
-        history.replaceState(null, "", `#${slug}`);
-      } else {
-        history.replaceState(null, "", window.location.pathname + window.location.search);
-      }
-    },
-    []
-  );
+  const selectProject = useCallback((project: EcosystemProject | null) => {
+    setSelectedProject(project);
+    if (project) {
+      const slug = generateProjectSlug(project.name);
+      history.replaceState(null, "", `#${slug}`);
+    } else {
+      history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    }
+  }, []);
 
   // Find project by URL hash slug
   const findProjectBySlug = useCallback(
     (slug: string): EcosystemProject | undefined => {
       return projects.find((p) => generateProjectSlug(p.name) === slug);
     },
-    [projects]
+    [projects],
   );
 
   // Handle URL hash on mount and hash changes
@@ -532,20 +549,26 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-gray-200 text-sm text-gray-600 hover:text-gray-900 transition-colors">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="font-medium text-[13px]">Live Services</span>
+                    <span className="font-medium text-[13px]">Live</span>
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem className="gap-2" disabled>
                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    Live Services
+                    Live
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" onClick={() => navigate("/graveyard")}>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => navigate("/graveyard")}
+                  >
                     <Skull className="h-4 w-4 text-gray-400" />
                     Graveyard
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2" onClick={() => navigate("/requests")}>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => navigate("/requests")}
+                  >
                     <Lightbulb className="h-4 w-4 text-amber-500" />
                     Requests
                   </DropdownMenuItem>
@@ -774,7 +797,10 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                       <div
                         key={project.id}
                         className="animate-in fade-in-0 slide-in-from-bottom-1"
-                        style={{ animationDelay: `${idx * 30}ms`, animationFillMode: "backwards" }}
+                        style={{
+                          animationDelay: `${idx * 30}ms`,
+                          animationFillMode: "backwards",
+                        }}
                       >
                         <ProjectCard
                           project={project}
@@ -826,7 +852,6 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
         onClose={() => selectProject(null)}
         categories={categories}
       />
-
     </div>
   );
 };
