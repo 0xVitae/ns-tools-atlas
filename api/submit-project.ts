@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `<b>Category:</b> ${category.trim()}\n` +
           `<b>Description:</b> ${desc}` +
           (loginUrl ? `\n\n<a href="${loginUrl.trim()}">Review now →</a>` : '');
-        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
