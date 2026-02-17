@@ -1,7 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCategoryName } from "@/data/ecosystemData";
-import { useProjectRequests, useSubmitRequest, useUpvoteRequest } from "@/hooks/useProjects";
+import {
+  useProjectRequests,
+  useSubmitRequest,
+  useUpvoteRequest,
+} from "@/hooks/useProjects";
 import { ArrowLeft, ChevronUp, Lightbulb, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +53,9 @@ const Requests: React.FC = () => {
   const submitMutation = useSubmitRequest();
   const upvoteMutation = useUpvoteRequest();
   const [upvotedIds, setUpvotedIdsState] = useState<string[]>(getUpvotedIds);
-  const [localUpvoteDeltas, setLocalUpvoteDeltas] = useState<Record<string, number>>({});
+  const [localUpvoteDeltas, setLocalUpvoteDeltas] = useState<
+    Record<string, number>
+  >({});
   const [showForm, setShowForm] = useState(false);
 
   // Form state
@@ -119,7 +125,9 @@ const Requests: React.FC = () => {
             </Button>
             <div className="flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-amber-500" />
-              <h1 className="text-lg font-bold text-gray-900">Project Requests</h1>
+              <h1 className="text-lg font-bold text-gray-900">
+                Project Requests
+              </h1>
             </div>
           </div>
           <Button
@@ -137,7 +145,8 @@ const Requests: React.FC = () => {
       <ScrollArea className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-3">
           <p className="text-sm text-muted-foreground mb-4">
-            Community ideas for projects or resources that should exist in Nova Scotia. Upvote the ones you want to see built!
+            Community ideas for projects or resources that should exist in
+            Network School. Upvote the ones you want to see built!
           </p>
           {isLoading ? (
             <div className="text-center py-12">
@@ -174,21 +183,36 @@ const Requests: React.FC = () => {
                         : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600"
                     }`}
                   >
-                    <ChevronUp className={`w-4 h-4 ${isUpvoted ? "text-primary" : ""}`} />
-                    <span className={`text-sm font-semibold ${isUpvoted ? "text-primary" : "text-gray-600"}`}>
+                    <ChevronUp
+                      className={`w-4 h-4 ${isUpvoted ? "text-primary" : ""}`}
+                    />
+                    <span
+                      className={`text-sm font-semibold ${isUpvoted ? "text-primary" : "text-gray-600"}`}
+                    >
                       {request.upvotes}
                     </span>
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      {request.emoji && <span className="text-base">{request.emoji}</span>}
-                      <h3 className="font-semibold text-[15px] text-gray-900">{request.name}</h3>
+                      {request.emoji && (
+                        <span className="text-base">{request.emoji}</span>
+                      )}
+                      <h3 className="font-semibold text-[15px] text-gray-900">
+                        {request.name}
+                      </h3>
                     </div>
-                    <p className="text-[13px] text-gray-500 leading-relaxed">{request.description}</p>
+                    <p className="text-[13px] text-gray-500 leading-relaxed">
+                      {request.description}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[11px] text-gray-400">Submitted by {request.submittedBy}</span>
+                      <span className="text-[11px] text-gray-400">
+                        Submitted by {request.submittedBy}
+                      </span>
                       {request.category && (
-                        <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-200">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] text-gray-400 border-gray-200"
+                        >
                           {getCategoryName(request.category)}
                         </Badge>
                       )}
@@ -207,7 +231,7 @@ const Requests: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Submit a Project Idea</DialogTitle>
             <DialogDescription>
-              What project or resource should exist in Nova Scotia?
+              What project or resource should exist in Network School?
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -254,7 +278,11 @@ const Requests: React.FC = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={submitMutation.isPending || !formName.trim() || !formDescription.trim()}
+                disabled={
+                  submitMutation.isPending ||
+                  !formName.trim() ||
+                  !formDescription.trim()
+                }
               >
                 {submitMutation.isPending ? "Submitting..." : "Submit"}
               </Button>

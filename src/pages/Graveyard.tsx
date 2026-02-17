@@ -27,7 +27,9 @@ const Graveyard: React.FC = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Skull className="h-4 w-4 text-gray-400" />
-            <h1 className="text-lg font-bold text-gray-900">Startup Graveyard</h1>
+            <h1 className="text-lg font-bold text-gray-900">
+              Startup Graveyard
+            </h1>
           </div>
           <Badge variant="outline" className="ml-auto">
             {projects.length} projects
@@ -39,7 +41,7 @@ const Graveyard: React.FC = () => {
       <ScrollArea className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-3">
           <p className="text-sm text-muted-foreground mb-4">
-            Nova Scotia startups that have shut down. We remember them here.
+            Network School startups that have shut down. We remember them here.
           </p>
           {isLoading ? (
             <div className="text-center py-12">
@@ -84,7 +86,9 @@ const Graveyard: React.FC = () => {
                     </div>
                     <div className="flex flex-col min-w-0 gap-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-[15px] text-gray-900">{project.name}</h3>
+                        <h3 className="font-semibold text-[15px] text-gray-900">
+                          {project.name}
+                        </h3>
                         {project.tags?.includes("nsOfficial") && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-foreground text-background text-[10px] font-medium">
                             Official
@@ -92,7 +96,10 @@ const Graveyard: React.FC = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-200">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] text-gray-400 border-gray-200"
+                        >
                           {getCategoryName(project.category)}
                         </Badge>
                         {project.tags?.includes("free") && (
@@ -111,13 +118,17 @@ const Graveyard: React.FC = () => {
 
                   {/* Description */}
                   {project.description && (
-                    <p className="text-[13px] text-gray-500 leading-relaxed">{project.description}</p>
+                    <p className="text-[13px] text-gray-500 leading-relaxed">
+                      {project.description}
+                    </p>
                   )}
 
                   {/* Post mortem */}
                   {project.postMortem && (
                     <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-[12px] text-gray-600 italic">{project.postMortem}</p>
+                      <p className="text-[12px] text-gray-600 italic">
+                        {project.postMortem}
+                      </p>
                     </div>
                   )}
 
@@ -148,38 +159,41 @@ const Graveyard: React.FC = () => {
                   </div>
 
                   {/* NS Profile Links */}
-                  {project.nsProfileUrls && project.nsProfileUrls.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.nsProfileUrls.map((profileUrl, idx) => {
-                        const username = profileUrl.split('/').pop() || profileUrl;
-                        return (
-                          <a
-                            key={idx}
-                            href={profileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                          >
-                            <span className="text-blue-500">@{username}</span>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {project.nsProfileUrls &&
+                    project.nsProfileUrls.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {project.nsProfileUrls.map((profileUrl, idx) => {
+                          const username =
+                            profileUrl.split("/").pop() || profileUrl;
+                          return (
+                            <a
+                              key={idx}
+                              href={profileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                            >
+                              <span className="text-blue-500">@{username}</span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
 
                   {/* Product Images */}
-                  {project.productImages && project.productImages.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto">
-                      {project.productImages.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`${project.name} screenshot ${idx + 1}`}
-                          className="rounded-lg border border-gray-100 object-cover h-32"
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {project.productImages &&
+                    project.productImages.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto">
+                        {project.productImages.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt={`${project.name} screenshot ${idx + 1}`}
+                            className="rounded-lg border border-gray-100 object-cover h-32"
+                          />
+                        ))}
+                      </div>
+                    )}
                 </div>
               );
             })

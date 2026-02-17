@@ -14,7 +14,7 @@ npm run preview    # Preview production build
 
 ## Architecture
 
-This is a React visualization app for mapping the Nova Scotia startup ecosystem. It displays organizations across 9 categories on an interactive pan/zoom canvas.
+This is a React visualization app for mapping the Network School startup ecosystem. It displays organizations across 9 categories on an interactive pan/zoom canvas.
 
 ### Core Structure
 
@@ -31,6 +31,7 @@ This is a React visualization app for mapping the Nova Scotia startup ecosystem.
 **UI Components**: shadcn/ui components in `src/components/ui/` - use these for all UI elements
 
 **Category System**: 9 categories defined as a union type in `src/types/ecosystem.ts`:
+
 - networks, coworking, media-events, education, local-vcs, global-vcs, accelerators, corporate, public-entities
 
 **Canvas Layout**: Fixed positions defined in `CANVAS_LAYOUT` in FullCanvas.tsx. Projects are scattered within category boxes using deterministic positioning.

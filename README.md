@@ -1,6 +1,6 @@
 # NS Startup Ecosystem
 
-Interactive visualization of the Nova Scotia startup ecosystem, mapping organizations across networks, VCs, accelerators, coworking spaces, and more.
+Interactive visualization of the Network School startup ecosystem, mapping organizations across networks, VCs, accelerators, coworking spaces, and more.
 
 ## Development
 
