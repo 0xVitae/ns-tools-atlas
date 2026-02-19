@@ -2,42 +2,68 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
+## Project Overview
+
+Network School Startup Atlas — an interactive ecosystem visualization of startups in the Network School community. Full-stack React app deployed on Vercel with Neon PostgreSQL.
+
+## Commands
 
 ```bash
-npm run dev        # Start dev server on port 8080
-npm run build      # Production build
-npm run build:dev  # Development build
-npm run lint       # Run ESLint
-npm run preview    # Preview production build
+pnpm dev              # Start Vite dev server on localhost:8080
+pnpm dev:vercel       # Local dev with Vercel serverless functions
+pnpm build            # Production build
+pnpm lint             # ESLint
+pnpm db:generate      # Generate Drizzle migrations from schema
+pnpm db:migrate       # Run database migrations
+pnpm db:push          # Push schema directly to database
+pnpm db:studio        # Open Drizzle Studio GUI
 ```
+
+No test framework is configured.
 
 ## Architecture
 
-This is a React visualization app for mapping the Network School startup ecosystem. It displays organizations across 9 categories on an interactive pan/zoom canvas.
+### Stack
+- **Frontend:** React 18 + TypeScript, Vite, TailwindCSS, shadcn/ui
+- **State:** TanStack React Query for server state, React hooks for local state
+- **Visualization:** D3 Force simulation (FullCanvas.tsx), Konva, Recharts
+- **Backend:** Vercel serverless functions (TypeScript handlers in `api/`)
+- **Database:** Neon PostgreSQL via Drizzle ORM
+- **Deployment:** Vercel with SPA routing
 
-### Core Structure
+### Key Directories
+- `src/pages/` — Route pages (Index, Admin, Pending, Requests, Graveyard, Data)
+- `src/components/ecosystem/` — Core visualization: FullCanvas.tsx (D3 canvas), MobileProjectList.tsx, AddProjectForm.tsx
+- `src/components/ui/` — shadcn/ui primitives
+- `src/hooks/useProjects.ts` — All React Query hooks and mutations for API calls
+- `src/lib/api.ts` — API client functions matching serverless endpoints
+- `src/types/ecosystem.ts` — Core TypeScript types (EcosystemProject, ProjectRequest)
+- `src/data/ecosystemData.ts` — Category utilities, color/slug helpers
+- `api/` — Vercel serverless handlers (each file = one endpoint)
+- `api/_db.ts` — Drizzle schema, DB connection, and table definitions
 
-- **Entry**: `src/main.tsx` → `src/App.tsx` → `src/pages/Index.tsx`
-- **Canvas**: `src/components/ecosystem/FullCanvas.tsx` - Main visualization component with pan/zoom controls and project submission form
-- **Data Layer**:
-  - `src/types/ecosystem.ts` - TypeScript types (`EcosystemProject`, `CategoryType`, `Category`)
-  - `src/data/ecosystemData.ts` - Category definitions, colors, and initial project data
+### Data Flow
+1. API client (`src/lib/api.ts`) calls Vercel serverless functions (`api/`)
+2. Serverless functions use Drizzle ORM to query Neon PostgreSQL (`api/_db.ts`)
+3. React Query hooks (`src/hooks/useProjects.ts`) wrap API calls with caching
+4. Components consume hooks — FullCanvas.tsx renders D3 force simulation, MobileProjectList.tsx renders masonry grid
 
-### Key Patterns
+### Database Schema (3 tables in `api/_db.ts`)
+- **projects** — Main entities with category, status ('active'|'dead'), approvalStatus ('approved'|'pending'|'rejected'), custom category support, arrays for tags/images/urls
+- **project_requests** — Community-submitted project suggestions with upvote count
+- **request_upvotes** — Tracks individual votes (requestId + voterId composite key)
 
-**Path Alias**: Use `@/` for imports from `src/` (configured in tsconfig.json and vite.config.ts)
+### Auth Pattern
+Admin endpoints (`pending-projects`, `approve-project`, `admin-data`, `admin-update`) require `x-admin-password` or `x-admin-token` headers. Public endpoints have no auth. Token auto-login via `?token=` URL param.
 
-**UI Components**: shadcn/ui components in `src/components/ui/` - use these for all UI elements
+### Categories
+10 predefined categories (Networks, Coworking, Events, Media, Education, Local VCs, Global VCs, Accelerators, Corporate, Transport) defined in `src/data/categories.json`. Custom categories supported per-project with auto-assigned colors.
 
-**Category System**: 9 categories defined as a union type in `src/types/ecosystem.ts`:
+## Path Alias
+`@/*` maps to `src/*` (configured in tsconfig.json and vite.config.ts).
 
-- networks, coworking, media-events, education, local-vcs, global-vcs, accelerators, corporate, public-entities
+## Environment Variables
+See `.env.example`: DATABASE_URL, ADMIN_PASSWORD, ADMIN_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
 
-**Canvas Layout**: Fixed positions defined in `CANVAS_LAYOUT` in FullCanvas.tsx. Projects are scattered within category boxes using deterministic positioning.
-
-### State Management
-
-- React Query (`@tanstack/react-query`) available but currently unused
-- Local state in Index.tsx manages the projects array
-- Projects can be added via the floating "Add Project" button form
+## TypeScript
+Strict mode is OFF. No strictNullChecks, no noImplicitAny.
