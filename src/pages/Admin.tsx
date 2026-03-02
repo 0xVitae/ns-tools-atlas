@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Database, FolderOpen, Lightbulb, Check, X, Trash2 } from "lucide-react";
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useRef } from "react";
 
 const ADMIN_PW_KEY = "ns-atlas-admin-pw";
 
@@ -74,6 +74,63 @@ async function deleteRow(
     const data = await response.json();
     throw new Error(data.error || "Delete failed");
   }
+}
+
+function ImageCell({ value }: { value: unknown }) {
+  const [preview, setPreview] = useState<{ url: string; x: number; y: number } | null>(null);
+
+  const urls: string[] = Array.isArray(value)
+    ? (value as string[]).filter(Boolean)
+    : typeof value === "string" && value.trim()
+    ? value.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  if (urls.length === 0) return <span className="text-gray-300">—</span>;
+
+  const handleEnter = (url: string, e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const pw = 320;
+    const ph = 320;
+    let x = rect.right + 12;
+    if (x + pw > window.innerWidth) x = rect.left - pw - 12;
+    let y = rect.top;
+    if (y + ph > window.innerHeight) y = window.innerHeight - ph - 8;
+    setPreview({ url, x, y });
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-1 flex-wrap max-w-[180px]">
+        {urls.map((url, i) => (
+          <img
+            key={i}
+            src={url}
+            alt=""
+            loading="lazy"
+            onMouseEnter={(e) => handleEnter(url, e)}
+            onMouseLeave={() => setPreview(null)}
+            onError={(e) => ((e.target as HTMLElement).style.display = "none")}
+            className="h-8 w-8 rounded object-cover border border-gray-100 cursor-zoom-in bg-gray-100 transition-opacity opacity-0"
+            onLoad={(e) => ((e.target as HTMLImageElement).style.opacity = "1")}
+          />
+        ))}
+      </div>
+      {preview &&
+        createPortal(
+          <div
+            className="fixed pointer-events-none z-[9999] rounded-xl overflow-hidden shadow-2xl border border-gray-200 bg-white"
+            style={{ left: preview.x, top: preview.y }}
+          >
+            <img
+              src={preview.url}
+              alt=""
+              className="block max-w-[320px] max-h-[320px] object-contain"
+            />
+          </div>,
+          document.body
+        )}
+    </>
+  );
 }
 
 function EditableCell({
@@ -362,12 +419,16 @@ function DataTable({
             const cellEditable = editable && !isIdCol;
             return (
               <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap border-r border-gray-50 last:border-r-0">
-                <EditableCell
-                  value={row[col]}
-                  editable={cellEditable}
-                  onSave={(newValue) => onSave(rowId, col, newValue)}
-                  options={cellEditable ? STATUS_OPTIONS[col] : undefined}
-                />
+                {col === "productImages" ? (
+                  <ImageCell value={row[col]} />
+                ) : (
+                  <EditableCell
+                    value={row[col]}
+                    editable={cellEditable}
+                    onSave={(newValue) => onSave(rowId, col, newValue)}
+                    options={cellEditable ? STATUS_OPTIONS[col] : undefined}
+                  />
+                )}
               </td>
             );
           })}
