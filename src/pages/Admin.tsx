@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Database, FolderOpen, Lightbulb, Check, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Database, FolderOpen, Lightbulb, Check, X, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -76,8 +76,20 @@ async function deleteRow(
   }
 }
 
-function ImageCell({ value }: { value: unknown }) {
+function ImageCell({
+  value,
+  editable,
+  onSave,
+}: {
+  value: unknown;
+  editable?: boolean;
+  onSave?: (urls: string[]) => Promise<void>;
+}) {
   const [preview, setPreview] = useState<{ url: string; x: number; y: number } | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newUrl, setNewUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const urls: string[] = Array.isArray(value)
     ? (value as string[]).filter(Boolean)
@@ -85,7 +97,9 @@ function ImageCell({ value }: { value: unknown }) {
     ? value.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
-  if (urls.length === 0) return <span className="text-gray-300">—</span>;
+  useEffect(() => {
+    if (adding && inputRef.current) inputRef.current.focus();
+  }, [adding]);
 
   const handleEnter = (url: string, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -98,22 +112,94 @@ function ImageCell({ value }: { value: unknown }) {
     setPreview({ url, x, y });
   };
 
+  const handleRemove = async (url: string) => {
+    if (!onSave) return;
+    setSaving(true);
+    try {
+      await onSave(urls.filter((u) => u !== url));
+      toast.success("Image removed");
+    } catch (e: any) {
+      toast.error(e.message || "Remove failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const commitAdd = async () => {
+    const trimmed = newUrl.trim();
+    setAdding(false);
+    setNewUrl("");
+    if (!trimmed || !onSave) return;
+    setSaving(true);
+    try {
+      await onSave([...urls, trimmed]);
+      toast.success("Image added");
+    } catch (e: any) {
+      toast.error(e.message || "Add failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); commitAdd(); }
+    if (e.key === "Escape") { setAdding(false); setNewUrl(""); }
+  };
+
+  if (urls.length === 0 && !editable) return <span className="text-gray-300">—</span>;
+
   return (
     <>
-      <div className="flex items-center gap-1 flex-wrap max-w-[180px]">
+      <div className="flex items-center gap-1 flex-wrap max-w-[220px]">
         {urls.map((url, i) => (
-          <img
-            key={i}
-            src={url}
-            alt=""
-            loading="lazy"
-            onMouseEnter={(e) => handleEnter(url, e)}
-            onMouseLeave={() => setPreview(null)}
-            onError={(e) => ((e.target as HTMLElement).style.display = "none")}
-            className="h-8 w-8 rounded object-cover border border-gray-100 cursor-zoom-in bg-gray-100 transition-opacity opacity-0"
-            onLoad={(e) => ((e.target as HTMLImageElement).style.opacity = "1")}
-          />
+          <div key={i} className="relative group/thumb">
+            <img
+              src={url}
+              alt=""
+              loading="lazy"
+              onMouseEnter={(e) => handleEnter(url, e)}
+              onMouseLeave={() => setPreview(null)}
+              onError={(e) => ((e.target as HTMLElement).style.display = "none")}
+              className="h-8 w-8 rounded object-cover border border-gray-100 cursor-zoom-in bg-gray-100 transition-opacity opacity-0"
+              onLoad={(e) => ((e.target as HTMLImageElement).style.opacity = "1")}
+            />
+            {editable && (
+              <button
+                onClick={() => handleRemove(url)}
+                onMouseEnter={() => setPreview(null)}
+                disabled={saving}
+                className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-white border border-gray-200 shadow-sm text-gray-400 hover:text-red-500 hover:border-red-300 items-center justify-center hidden group-hover/thumb:flex transition-colors"
+                title="Remove image"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
         ))}
+
+        {editable && (
+          adding ? (
+            <input
+              ref={inputRef}
+              type="url"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+              onBlur={commitAdd}
+              placeholder="Paste URL…"
+              className="h-8 w-36 px-1.5 text-[11px] border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          ) : (
+            <button
+              onClick={() => setAdding(true)}
+              disabled={saving}
+              className="h-8 w-8 rounded border border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center transition-colors"
+              title="Add image URL"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          )
+        )}
       </div>
       {preview &&
         createPortal(
@@ -288,7 +374,7 @@ function DataTable({
 }: {
   rows: Record<string, unknown>[];
   editable: boolean;
-  onSave: (id: string, column: string, value: string | null) => Promise<void>;
+  onSave: (id: string, column: string, value: string | string[] | null) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   onApprove?: (id: string) => Promise<void>;
   groupBy?: string;
@@ -420,7 +506,11 @@ function DataTable({
             return (
               <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap border-r border-gray-50 last:border-r-0">
                 {col === "productImages" ? (
-                  <ImageCell value={row[col]} />
+                  <ImageCell
+                    value={row[col]}
+                    editable={cellEditable}
+                    onSave={async (urls) => onSave(rowId, col, urls)}
+                  />
                 ) : (
                   <EditableCell
                     value={row[col]}
@@ -579,7 +669,7 @@ const Admin: React.FC = () => {
   };
 
   const handleSave = useCallback(
-    async (id: string, column: string, value: string | null) => {
+    async (id: string, column: string, value: string | string[] | null) => {
       await updateCell(creds, TABLE_MAP[activeTab], id, column, value);
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
     },
