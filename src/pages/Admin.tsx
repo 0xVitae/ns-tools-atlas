@@ -183,7 +183,7 @@ function EditableCell({
           className="w-full min-w-[100px] px-1.5 py-1 text-[12px] border border-blue-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
           disabled={saving}
         />
-        <button onClick={save} disabled={saving} className="text-green-600 hover:text-green-700 shrink-0">
+        <button onClick={() => save()} disabled={saving} className="text-green-600 hover:text-green-700 shrink-0">
           <Check className="h-3.5 w-3.5" />
         </button>
         <button onClick={cancel} className="text-gray-400 hover:text-gray-600 shrink-0">
