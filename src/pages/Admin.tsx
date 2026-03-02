@@ -225,6 +225,7 @@ function DataTable({
   editable,
   onSave,
   onDelete,
+  onApprove,
   groupBy,
   hiddenColumns = [],
 }: {
@@ -232,6 +233,7 @@ function DataTable({
   editable: boolean;
   onSave: (id: string, column: string, value: string | null) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  onApprove?: (id: string) => Promise<void>;
   groupBy?: string;
   hiddenColumns?: string[];
 }) {
@@ -369,6 +371,20 @@ function DataTable({
               </td>
             );
           })}
+          {onApprove && (
+            <td className="px-2 py-2 text-center border-l border-gray-50 w-24">
+              {row.approvalStatus !== "approved" ? (
+                <button
+                  onClick={() => onApprove(rowId)}
+                  className="px-2.5 py-1 text-[11px] font-medium text-white bg-gray-900 hover:bg-black rounded-md transition-colors"
+                >
+                  Approve
+                </button>
+              ) : (
+                <span className="text-[11px] text-gray-300">approved</span>
+              )}
+            </td>
+          )}
         </tr>
       );
     });
@@ -426,6 +442,9 @@ function DataTable({
                   {col}
                 </th>
               ))}
+              {onApprove && (
+                <th className="w-24 bg-gray-50 border-l border-gray-100" />
+              )}
             </tr>
           </thead>
           <tbody>
@@ -433,7 +452,7 @@ function DataTable({
               <React.Fragment key={group.label}>
                 {groupBy && (
                   <tr className="bg-gray-100/80">
-                    <td colSpan={columns.length + (onDelete ? 1 : 0)} className="px-3 py-2">
+                    <td colSpan={columns.length + (onDelete ? 1 : 0) + (onApprove ? 1 : 0)} className="px-3 py-2">
                       <span
                         className={`inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide ${
                           STATUS_COLORS[group.label] || "text-gray-600"
@@ -512,6 +531,14 @@ const Admin: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
     },
     [creds, activeTab, queryClient]
+  );
+
+  const handleApprove = useCallback(
+    async (id: string): Promise<void> => {
+      await updateCell(creds, "projects", id, "approvalStatus", "approved");
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+    },
+    [creds, queryClient]
   );
 
   if (!authenticated) {
@@ -601,6 +628,7 @@ const Admin: React.FC = () => {
             editable
             onSave={handleSave}
             onDelete={handleDelete}
+            onApprove={activeTab === "projects" ? handleApprove : undefined}
             groupBy={activeTab === "projects" ? "approvalStatus" : undefined}
             hiddenColumns={HIDDEN_COLUMNS[activeTab]}
           />
