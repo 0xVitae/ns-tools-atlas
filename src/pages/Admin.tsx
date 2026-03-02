@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Database, FolderOpen, Lightbulb, Check, X, Trash2 } from "lucide-react";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 const ADMIN_PW_KEY = "ns-atlas-admin-pw";
 
@@ -230,20 +231,77 @@ function DataTable({
   rows: Record<string, unknown>[];
   editable: boolean;
   onSave: (id: string, column: string, value: string | null) => Promise<void>;
-  onDelete?: (id: string, name: string) => void;
+  onDelete?: (id: string) => Promise<void>;
   groupBy?: string;
   hiddenColumns?: string[];
 }) {
-  if (rows.length === 0) {
+  const [localRows, setLocalRows] = useState<Record<string, unknown>[]>(rows);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setLocalRows(rows);
+    setSelectedIds(new Set());
+  }, [rows]);
+
+  if (localRows.length === 0) {
     return <p className="text-sm text-gray-400 text-center py-8">No rows</p>;
   }
 
-  const columns = Object.keys(rows[0]).filter((c) => !hiddenColumns.includes(c));
+  const getRowId = (row: Record<string, unknown>) => String(row.id ?? row.requestId);
+  const allIds = localRows.map(getRowId);
+
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === allIds.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allIds));
+    }
+  };
+
+  const handleSingleDelete = async (id: string) => {
+    const removed = localRows.find((r) => getRowId(r) === id);
+    setLocalRows((prev) => prev.filter((r) => getRowId(r) !== id));
+    try {
+      await onDelete!(id);
+      toast.success("Deleted");
+    } catch (e: any) {
+      if (removed) setLocalRows((prev) => [...prev, removed]);
+      toast.error(e.message || "Delete failed");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    const removed = localRows.filter((r) => ids.includes(getRowId(r)));
+    setLocalRows((prev) => prev.filter((r) => !ids.includes(getRowId(r))));
+    setSelectedIds(new Set());
+
+    const results = await Promise.allSettled(ids.map((id) => onDelete!(id)));
+    const failures = results.filter((r) => r.status === "rejected");
+
+    if (failures.length > 0) {
+      setLocalRows((prev) => [...prev, ...removed]);
+      toast.error(`${failures.length} deletion(s) failed — changes reverted`);
+    } else {
+      toast.success(`Deleted ${ids.length} row${ids.length > 1 ? "s" : ""}`);
+    }
+  };
+
+  const columns = Object.keys(localRows[0]).filter((c) => !hiddenColumns.includes(c));
 
   const groups: { label: string; rows: Record<string, unknown>[] }[] = [];
   if (groupBy) {
     const grouped: Record<string, Record<string, unknown>[]> = {};
-    for (const row of rows) {
+    for (const row of localRows) {
       const key = row["status"] === "dead" ? "graveyard" : String(row[groupBy] ?? "unknown");
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(row);
@@ -257,73 +315,142 @@ function DataTable({
       groups.push({ label: key, rows: grouped[key] });
     }
   } else {
-    groups.push({ label: "", rows });
+    groups.push({ label: "", rows: localRows });
   }
 
+  const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
   const renderRows = (groupRows: Record<string, unknown>[]) =>
-    groupRows.map((row, i) => (
-      <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50 group">
-        {onDelete && (
-          <td className="px-2 py-2 text-center border-r border-gray-50">
-            <button
-              onClick={() => onDelete(String(row.id ?? row.requestId), String(row.name ?? row.id))}
-              className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
-              title="Delete row"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </td>
-        )}
-        {columns.map((col) => {
-          const isIdCol = col === "id" || col === "requestId" || col === "voterId";
-          const cellEditable = editable && !isIdCol;
-          return (
-            <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap border-r border-gray-50 last:border-r-0">
-              <EditableCell
-                value={row[col]}
-                editable={cellEditable}
-                onSave={(newValue) => onSave(String(row.id ?? row.requestId), col, newValue)}
-                options={cellEditable ? STATUS_OPTIONS[col] : undefined}
-              />
+    groupRows.map((row, i) => {
+      const rowId = getRowId(row);
+      const isSelected = selectedIds.has(rowId);
+      return (
+        <tr
+          key={i}
+          className={`border-b border-gray-100 hover:bg-gray-50/50 group ${isSelected ? "!bg-blue-50" : ""}`}
+        >
+          {onDelete && (
+            <td className="px-2 py-2 text-center border-r border-gray-50 w-14">
+              <div className="flex items-center justify-center gap-1">
+                <input
+                  type="checkbox"
+                  className={`h-3.5 w-3.5 rounded border-gray-300 accent-blue-600 cursor-pointer transition-opacity ${
+                    isSelected || selectedIds.size > 0
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  checked={isSelected}
+                  onChange={() => toggleRow(rowId)}
+                />
+                {selectedIds.size === 0 && (
+                  <button
+                    onClick={() => handleSingleDelete(rowId)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
+                    title="Delete row"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </td>
-          );
-        })}
-      </tr>
-    ));
+          )}
+          {columns.map((col) => {
+            const isIdCol = col === "id" || col === "requestId" || col === "voterId";
+            const cellEditable = editable && !isIdCol;
+            return (
+              <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap border-r border-gray-50 last:border-r-0">
+                <EditableCell
+                  value={row[col]}
+                  editable={cellEditable}
+                  onSave={(newValue) => onSave(rowId, col, newValue)}
+                  options={cellEditable ? STATUS_OPTIONS[col] : undefined}
+                />
+              </td>
+            );
+          })}
+        </tr>
+      );
+    });
 
   return (
-    <div className="overflow-auto border border-gray-200 rounded-lg" style={{ maxHeight: "calc(100vh - 140px)" }}>
-      <table className="w-full text-left text-[12px] border-collapse">
-        <thead className="sticky top-0 z-10">
-          <tr className="bg-gray-50 border-b border-gray-200">
-            {onDelete && (
-              <th className="w-10 bg-gray-50 border-r border-gray-100" />
-            )}
-            {columns.map((col) => (
-              <th key={col} className="px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap bg-gray-50 border-r border-gray-100 last:border-r-0">
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((group) => (
-            <React.Fragment key={group.label}>
-              {groupBy && (
-                <tr className="bg-gray-100/80">
-                  <td colSpan={columns.length + (onDelete ? 1 : 0)} className="px-3 py-2">
-                    <span className={`inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide ${STATUS_COLORS[group.label] || "text-gray-600"} px-2 py-0.5 rounded`}>
-                      {group.label}
-                      <span className="font-normal text-[11px] opacity-70">({group.rows.length})</span>
-                    </span>
-                  </td>
-                </tr>
+    <div
+      className="border border-gray-200 rounded-lg overflow-hidden flex flex-col"
+      style={{ maxHeight: "calc(100vh - 140px)" }}
+    >
+      {/* Bulk action bar — sits above the scroll area so thead sticky still works */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-blue-100 shrink-0">
+          <span className="text-[12px] text-gray-500 font-medium">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1.5 px-3 py-1 text-[12px] font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Selected
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-[12px] text-gray-400 hover:text-gray-600 underline transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Scrollable table */}
+      <div className="overflow-auto flex-1">
+        <table className="w-full text-left text-[12px] border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gray-50 border-b border-gray-200">
+              {onDelete && (
+                <th className="w-14 bg-gray-50 border-r border-gray-100 px-2 py-2.5">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded border-gray-300 accent-blue-600 cursor-pointer"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected;
+                    }}
+                    onChange={toggleAll}
+                  />
+                </th>
               )}
-              {renderRows(group.rows)}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
+              {columns.map((col) => (
+                <th
+                  key={col}
+                  className="px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap bg-gray-50 border-r border-gray-100 last:border-r-0"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <React.Fragment key={group.label}>
+                {groupBy && (
+                  <tr className="bg-gray-100/80">
+                    <td colSpan={columns.length + (onDelete ? 1 : 0)} className="px-3 py-2">
+                      <span
+                        className={`inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide ${
+                          STATUS_COLORS[group.label] || "text-gray-600"
+                        } px-2 py-0.5 rounded`}
+                      >
+                        {group.label}
+                        <span className="font-normal text-[11px] opacity-70">({group.rows.length})</span>
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {renderRows(group.rows)}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -380,14 +507,9 @@ const Admin: React.FC = () => {
   );
 
   const handleDelete = useCallback(
-    (id: string, name: string) => {
-      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-      deleteRow(creds, TABLE_MAP[activeTab], id)
-        .then(() => {
-          toast.success(`Deleted "${name}"`);
-          queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-        })
-        .catch((e) => toast.error(e.message || "Delete failed"));
+    async (id: string): Promise<void> => {
+      await deleteRow(creds, TABLE_MAP[activeTab], id);
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
     },
     [creds, activeTab, queryClient]
   );
