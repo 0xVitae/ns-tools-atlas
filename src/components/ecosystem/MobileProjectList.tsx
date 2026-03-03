@@ -177,7 +177,7 @@ const ProjectDetailDrawer: React.FC<{
   if (!project) return null;
 
   const colors = getCategoryProjectColors(project.category);
-  const category = categories.find((c) => c.id === project.category);
+  const category = categories.find((c) => c.id === project.category?.toLowerCase());
   const categoryName = category?.name || getCategoryName(project.category);
 
   return (
@@ -424,12 +424,13 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
     return result;
   }, [projects, searchQuery, activeTagFilters]);
 
-  // Group projects by category
+  // Group projects by category (normalize to lowercase for case-insensitive matching)
   const projectsByCategory = useMemo(() => {
     return filteredProjects.reduce(
       (acc, project) => {
-        if (!acc[project.category]) acc[project.category] = [];
-        acc[project.category].push(project);
+        const key = project.category?.toLowerCase() || project.category;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(project);
         return acc;
       },
       {} as Record<string, EcosystemProject[]>,

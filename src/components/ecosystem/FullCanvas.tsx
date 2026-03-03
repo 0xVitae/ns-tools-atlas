@@ -296,12 +296,13 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     );
   }, [projects, activeTagFilters]);
 
-  // Group filtered projects by category
+  // Group filtered projects by category (normalize to lowercase for case-insensitive matching)
   const projectsByCategory = useMemo(() => {
     return filteredProjects.reduce(
       (acc, project) => {
-        if (!acc[project.category]) acc[project.category] = [];
-        acc[project.category].push(project);
+        const key = project.category?.toLowerCase() || project.category;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(project);
         return acc;
       },
       {} as Record<string, EcosystemProject[]>,

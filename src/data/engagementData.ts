@@ -36,12 +36,13 @@ export function generateEngagementData(
   projects: EcosystemProject[],
   categories: Category[]
 ): EngagementData {
-  // Group projects by category
+  // Group projects by category (normalize to lowercase for case-insensitive matching)
   const projectsByCategory = new Map<string, EcosystemProject[]>();
   projects.forEach(project => {
-    const existing = projectsByCategory.get(project.category) || [];
+    const key = project.category?.toLowerCase() || project.category;
+    const existing = projectsByCategory.get(key) || [];
     existing.push(project);
-    projectsByCategory.set(project.category, existing);
+    projectsByCategory.set(key, existing);
   });
 
   // Build category engagement data

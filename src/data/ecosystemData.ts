@@ -56,13 +56,14 @@ export function buildCategoriesFromProjects(projects: EcosystemProject[]): Categ
   const categoryMap = new Map<string, Category>();
   BASE_CATEGORIES.forEach(c => categoryMap.set(c.id, c));
 
-  // Add any new categories found in projects
+  // Add any new categories found in projects (normalize to lowercase)
   projects.forEach(p => {
-    if (!categoryMap.has(p.category)) {
-      categoryMap.set(p.category, {
-        id: p.category,
-        name: formatCategoryName(p.category),
-        color: getColorForNewCategory(p.category),
+    const normalizedCategory = p.category?.toLowerCase();
+    if (normalizedCategory && !categoryMap.has(normalizedCategory)) {
+      categoryMap.set(normalizedCategory, {
+        id: normalizedCategory,
+        name: formatCategoryName(normalizedCategory),
+        color: getColorForNewCategory(normalizedCategory),
       });
     }
   });
@@ -75,8 +76,9 @@ export function buildCategoriesFromProjects(projects: EcosystemProject[]): Categ
  * Falls back to hash-based color for unknown categories
  */
 export function getCategoryColor(categoryId: string): string {
-  const cat = BASE_CATEGORIES.find(c => c.id === categoryId);
-  return cat?.color ?? getColorForNewCategory(categoryId);
+  const normalized = categoryId?.toLowerCase();
+  const cat = BASE_CATEGORIES.find(c => c.id === normalized);
+  return cat?.color ?? getColorForNewCategory(normalized);
 }
 
 /**
@@ -84,8 +86,9 @@ export function getCategoryColor(categoryId: string): string {
  * Falls back to formatted slug for unknown categories
  */
 export function getCategoryName(categoryId: string): string {
-  const cat = BASE_CATEGORIES.find(c => c.id === categoryId);
-  return cat?.name ?? formatCategoryName(categoryId);
+  const normalized = categoryId?.toLowerCase();
+  const cat = BASE_CATEGORIES.find(c => c.id === normalized);
+  return cat?.name ?? formatCategoryName(normalized);
 }
 
 /**

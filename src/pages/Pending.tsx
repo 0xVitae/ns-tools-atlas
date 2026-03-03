@@ -349,7 +349,7 @@ const Pending: React.FC = () => {
                     </SelectItem>
                   ))}
                   {/* Show current value if it's a custom category */}
-                  {!BASE_CATEGORIES.find((c) => c.id === editForm.category) &&
+                  {!BASE_CATEGORIES.find((c) => c.id === editForm.category?.toLowerCase()) &&
                     editForm.category && (
                       <SelectItem value={editForm.category}>
                         {editForm.category} (custom)
