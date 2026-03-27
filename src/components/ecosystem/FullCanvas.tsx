@@ -1330,6 +1330,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         >
           📅 Book Office Hours
         </a>
+        <a href="/docs" className="hover:text-foreground transition-colors">
+          📖 Read the Docs
+        </a>
       </div>
 
       {/* Canvas hint */}

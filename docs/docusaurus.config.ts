@@ -39,8 +39,9 @@ const config: Config = {
 
   themeConfig: {
     colorMode: {
-      defaultMode: "dark",
-      respectPrefersColorScheme: true,
+      defaultMode: "light",
+      disableSwitch: true,
+      respectPrefersColorScheme: false,
     },
     announcementBar: {
       id: "atlas_link",

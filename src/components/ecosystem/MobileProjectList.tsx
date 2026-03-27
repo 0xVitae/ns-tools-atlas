@@ -177,7 +177,9 @@ const ProjectDetailDrawer: React.FC<{
   if (!project) return null;
 
   const colors = getCategoryProjectColors(project.category);
-  const category = categories.find((c) => c.id === project.category?.toLowerCase());
+  const category = categories.find(
+    (c) => c.id === project.category?.toLowerCase(),
+  );
   const categoryName = category?.name || getCategoryName(project.category);
 
   return (
@@ -843,6 +845,9 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
           className="text-xs text-gray-400 hover:text-gray-600"
         >
           Book Office Hours
+        </a>
+        <a href="/docs" className="text-xs text-gray-400 hover:text-gray-600">
+          Read the Docs
         </a>
       </div>
 
