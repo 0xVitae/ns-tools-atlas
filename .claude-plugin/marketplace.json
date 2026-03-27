@@ -1,0 +1,17 @@
+{
+  "name": "ns-tools",
+  "owner": {
+    "name": "0xVitae"
+  },
+  "plugins": [
+    {
+      "name": "ns-tools",
+      "source": ".",
+      "description": "Claude Code skills for building with Network School APIs and tools",
+      "version": "1.0.0",
+      "author": {
+        "name": "0xVitae"
+      }
+    }
+  ]
+}

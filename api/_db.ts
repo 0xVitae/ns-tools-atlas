@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { pgTable, pgEnum, text, integer, primaryKey } from 'drizzle-orm/pg-core';
 
@@ -48,7 +48,17 @@ export const requestUpvotes = pgTable('request_upvotes', {
 
 // --- DB Connection ---
 
+const isLocalDev = process.env.USE_LOCAL_DB === 'true';
+
+if (isLocalDev) {
+  neonConfig.fetchEndpoint = 'http://db.localtest.me:4444/sql';
+  neonConfig.useSecureWebSocket = false;
+}
+
 export function getDb() {
-  const sql = neon(process.env.DATABASE_URL!);
+  const connectionString = isLocalDev
+    ? 'postgres://postgres:postgres@db.localtest.me:5432/atlas'
+    : process.env.DATABASE_URL!;
+  const sql = neon(connectionString);
   return drizzle(sql);
 }

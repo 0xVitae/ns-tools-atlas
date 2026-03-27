@@ -1,0 +1,13 @@
+{
+  "name": "ns-tools",
+  "version": "1.0.0",
+  "description": "Claude Code skills for building with Network School APIs and tools",
+  "author": {
+    "name": "0xVitae"
+  },
+  "homepage": "https://github.com/0xvitae/ns-tools-atlas",
+  "repository": "https://github.com/0xvitae/ns-tools-atlas",
+  "license": "MIT",
+  "keywords": ["network-school", "ns-auth", "discord", "oauth"],
+  "skills": ["./skills/"]
+}

@@ -27,9 +27,7 @@ const Graveyard: React.FC = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Skull className="h-4 w-4 text-gray-400" />
-            <h1 className="text-lg font-bold text-gray-900">
-              Startup Graveyard
-            </h1>
+            <h1 className="text-lg font-bold text-gray-900">tool Graveyard</h1>
           </div>
           <Badge variant="outline" className="ml-auto">
             {projects.length} projects
@@ -41,7 +39,7 @@ const Graveyard: React.FC = () => {
       <ScrollArea className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-3">
           <p className="text-sm text-muted-foreground mb-4">
-            Network School startups that have shut down. We remember them here.
+            Network School tools that have shut down. We remember them here.
           </p>
           {isLoading ? (
             <div className="text-center py-12">
