@@ -6,16 +6,6 @@ const baseUrl = process.env.BASE_URL
 
 const callbackUri = `${baseUrl}/api/auth/callback`;
 
-function handleDebug(_req: VercelRequest, res: VercelResponse) {
-  res.json({
-    BASE_URL: process.env.BASE_URL || null,
-    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL || null,
-    computed_baseUrl: baseUrl,
-    computed_callbackUri: callbackUri,
-    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID ? 'set' : 'missing',
-  });
-}
-
 function handleDiscord(_req: VercelRequest, res: VercelResponse) {
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
@@ -136,7 +126,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action;
 
   switch (action) {
-    case 'debug':     return handleDebug(req, res);
     case 'discord':   return handleDiscord(req, res);
     case 'callback':  return handleCallback(req, res);
     case 'me':        return handleMe(req, res);
