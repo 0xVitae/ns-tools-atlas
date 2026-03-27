@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "ns-tools",
-      "source": ".",
+      "source": "./",
       "description": "Claude Code skills for building with Network School APIs and tools",
       "version": "1.0.0",
       "author": {
