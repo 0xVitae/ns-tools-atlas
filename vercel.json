@@ -3,60 +3,7 @@
     { "source": "/((?!api/|docs/|src/|@vite|@react-refresh|node_modules|favicon).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/projects.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/graveyard.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/requests.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/submit-project.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/submit-request.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/upvote.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/pending-projects.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/approve-project.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/admin-data.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/admin-update.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/auth/discord.ts": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/auth/callback.ts": {
-      "memory": 256,
-      "maxDuration": 10
-    },
-    "api/auth/me.ts": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/auth/logout.ts": {
-      "memory": 128,
+    "api/auth/[action].ts": {
       "maxDuration": 10
     }
   }
