@@ -16,9 +16,11 @@ You are helping the user integrate **NS Auth**, the Network School Discord membe
 
 ## API Reference
 
-### POST https://api.ns.com/api/v1/ns-auth/verify
+### POST https://api.ns.com/api/v1/ns-auth/verify/
 
 Verify a Discord user's NS membership.
+
+> **Important:** The trailing slash is required. Without it, the server returns a 301 redirect which causes `fetch` to downgrade POST to GET, resulting in a 405 error.
 
 **Headers**
 
@@ -111,7 +113,7 @@ export const { handlers, auth } = NextAuth({
   ],
   callbacks: {
     async signIn({ profile }) {
-      const res = await fetch("https://api.ns.com/api/v1/ns-auth/verify", {
+      const res = await fetch("https://api.ns.com/api/v1/ns-auth/verify/", {
         method: "POST",
         headers: {
           "X-Api-Key": process.env.NS_AUTH_API_KEY!,
@@ -131,7 +133,7 @@ export const { handlers, auth } = NextAuth({
 ```typescript
 app.post("/api/ns-verify", async (req, res) => {
   const { discordId } = req.body;
-  const response = await fetch("https://api.ns.com/api/v1/ns-auth/verify", {
+  const response = await fetch("https://api.ns.com/api/v1/ns-auth/verify/", {
     method: "POST",
     headers: {
       "X-Api-Key": process.env.NS_AUTH_API_KEY!,
@@ -154,7 +156,7 @@ NS_AUTH_API_KEY = os.environ["NS_AUTH_API_KEY"]
 
 def verify_ns_membership(discord_id: str) -> dict:
     response = requests.post(
-        "https://api.ns.com/api/v1/ns-auth/verify",
+        "https://api.ns.com/api/v1/ns-auth/verify/",
         headers={
             "X-Api-Key": NS_AUTH_API_KEY,
             "Content-Type": "application/json",

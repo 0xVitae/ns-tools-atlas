@@ -19,7 +19,7 @@ Your project should:
 
 - **Be related to the NS ecosystem** — it should be something you're building as an NS member, or a tool/service relevant to the community
 - **Have a name and category** — these are the only required fields, but the more detail you provide, the better
-- **Be an active project** — the Atlas is for live projects. Shut-down projects go to the [Graveyard](https://nstools.xyz/graveyard)
+- **Be an active project** — the Atlas is for live projects. Shut-down projects go to the [Graveyard](/graveyard)
 - **Not be a duplicate** — check the Atlas first to make sure your project isn't already listed
 
 :::warning Rejection

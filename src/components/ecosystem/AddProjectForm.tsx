@@ -14,8 +14,6 @@ import {
   Sparkles,
   Images,
   ExternalLink,
-  User,
-  ArrowRight,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,13 +50,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   isMobile = false,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authProfileUrl, setAuthProfileUrl] = useState("");
-  const [isValidatingProfile, setIsValidatingProfile] = useState(false);
-  const [profileValidationError, setProfileValidationError] = useState<
-    string | null
-  >(null);
-  const [isProfileVerified, setIsProfileVerified] = useState(false);
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
@@ -98,72 +89,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       return parsed.protocol === "http:" || parsed.protocol === "https:";
     } catch {
       return false;
-    }
-  };
-
-  // Check if auth profile URL is valid (just needs to be a valid URL)
-  const isAuthProfileUrlValid = isValidUrl(authProfileUrl);
-
-  // Check if URL is from ns.com domain
-  const isNsComUrl = (url: string): boolean => {
-    try {
-      const parsed = new URL(url);
-      const hostname = parsed.hostname.toLowerCase();
-      return hostname === "ns.com" || hostname.endsWith(".ns.com");
-    } catch {
-      return false;
-    }
-  };
-
-  // Validate NS profile URL exists via API
-  const validateNsProfile = async (
-    url: string
-  ): Promise<{ valid: boolean; error?: string }> => {
-    try {
-      const response = await fetch("/api/validate-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      return await response.json();
-    } catch {
-      return { valid: false, error: "Network error - please try again" };
-    }
-  };
-
-  // Handle auth continuation
-  const handleAuthContinue = async () => {
-    if (!authProfileUrl.trim()) {
-      toast.error("Please enter your NS Profile URL");
-      return;
-    }
-    if (!isAuthProfileUrlValid) {
-      toast.error("Please enter a valid URL (http:// or https://)");
-      return;
-    }
-    if (!isNsComUrl(authProfileUrl)) {
-      toast.error("Please enter a valid NS Profile URL (ns.com)");
-      return;
-    }
-
-    setIsValidatingProfile(true);
-    setProfileValidationError(null);
-
-    try {
-      const result = await validateNsProfile(authProfileUrl.trim());
-      if (result.valid) {
-        setFormNsProfileUrls([authProfileUrl.trim()]);
-        setIsProfileVerified(true);
-        setIsAuthenticated(true);
-      } else {
-        setProfileValidationError(result.error || "This profile doesn't exist");
-        toast.error(result.error || "Profile not found - please check the URL");
-      }
-    } catch {
-      setProfileValidationError("Validation failed - please try again");
-      toast.error("Validation failed - please try again");
-    } finally {
-      setIsValidatingProfile(false);
     }
   };
 
@@ -382,133 +307,18 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setShowEmojiPicker(false);
     setLogoImageValid(null);
     setProductImagesValid({});
-    setIsAuthenticated(false);
-    setAuthProfileUrl("");
-    setIsValidatingProfile(false);
-    setProfileValidationError(null);
-    setIsProfileVerified(false);
     setIsFormOpen(false);
   };
-
-  // Auth content shown before form steps
-  const authContent = (
-    <>
-      <div className="relative bg-muted/30">
-        <div className="px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground tracking-tight">
-            Add Project
-          </h3>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-border/30" />
-      </div>
-
-      <div className="p-4 space-y-4">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">
-              Verify Your Identity
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Paste your NS Profile URL to continue
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Input
-            type="url"
-            placeholder="https://ns.com/your-profile"
-            value={authProfileUrl}
-            onChange={(e) => {
-              setAuthProfileUrl(e.target.value);
-              setProfileValidationError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAuthContinue();
-              }
-            }}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData("text").trim();
-              if (
-                pastedText &&
-                (pastedText.startsWith("http://") ||
-                  pastedText.startsWith("https://"))
-              ) {
-                e.preventDefault();
-                setAuthProfileUrl(pastedText);
-                setProfileValidationError(null);
-                // User must click Continue to validate
-              }
-            }}
-            className={`h-11 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
-              authProfileUrl.trim()
-                ? isValidatingProfile
-                  ? "border-yellow-400 focus:border-yellow-400"
-                  : isProfileVerified
-                  ? "border-emerald-400 focus:border-emerald-400"
-                  : profileValidationError
-                  ? "border-red-400 focus:border-red-400"
-                  : isAuthProfileUrlValid
-                  ? "border-blue-400 focus:border-blue-400"
-                  : "border-red-400 focus:border-red-400"
-                : ""
-            }`}
-          />
-          {authProfileUrl.trim() && !isAuthProfileUrlValid && (
-            <p className="text-xs text-red-500">
-              Please enter a valid URL (http:// or https://)
-            </p>
-          )}
-          {profileValidationError && (
-            <p className="text-xs text-red-500">{profileValidationError}</p>
-          )}
-        </div>
-
-        <Button
-          onClick={handleAuthContinue}
-          disabled={!isAuthProfileUrlValid || isValidatingProfile}
-          className={`w-full h-10 text-sm font-medium transition-all duration-300 gap-2 ${
-            isAuthProfileUrlValid && !isValidatingProfile
-              ? "bg-primary hover:bg-primary/90"
-              : ""
-          }`}
-        >
-          {isValidatingProfile ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
-              Verifying...
-            </>
-          ) : (
-            <>
-              Continue
-              <ArrowRight className="h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </div>
-    </>
-  );
 
   // Form content shared between Popover and Drawer
   const formContent = (
     <>
       {/* Header with Progress Bar Border - Fixed at top */}
       <div className="relative bg-muted/30 flex-shrink-0">
-        <div className="px-4 py-3 flex items-center justify-between">
+        <div className="px-4 py-3">
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
             Add Project
           </h3>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Check className="h-3 w-3 text-emerald-500" />
-            <span className="truncate max-w-[120px]">
-              {authProfileUrl.replace(/^https?:\/\//, "").split("/")[0]}
-            </span>
-          </div>
         </div>
         {/* Progress bar as bottom border */}
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-border/30">
@@ -1126,7 +936,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         </DrawerTrigger>
         <DrawerContent className="max-h-[90vh] flex flex-col">
           <div className="flex flex-col flex-1 overflow-hidden pb-safe">
-            {isAuthenticated ? formContent : authContent}
+            {formContent}
           </div>
         </DrawerContent>
       </Drawer>
@@ -1151,7 +961,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           className="w-80 p-0 overflow-hidden border-foreground/10 shadow-xl max-h-[80vh] flex flex-col"
           sideOffset={8}
         >
-          {isAuthenticated ? formContent : authContent}
+          {formContent}
         </PopoverContent>
       </Popover>
     </div>

@@ -9,7 +9,7 @@ slug: /
 The tool Atlas is an interactive map of tools and projects in the Network School community. Browse what NS members are building, submit your own project, or request tools you'd like to see.
 
 :::tip Explore the Atlas
-Head to the [live Atlas](https://nstools.xyz) to see the full interactive canvas — or check [/requests](https://nstools.xyz/requests) to suggest a tool you'd like built.
+Head to the [live Atlas](/) to see the full interactive canvas — or check [/requests](/requests) to suggest a tool you'd like built.
 :::
 
 ## Pages

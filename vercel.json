@@ -42,6 +42,22 @@
     "api/admin-update.ts": {
       "memory": 256,
       "maxDuration": 10
+    },
+    "api/auth/discord.ts": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/auth/callback.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    },
+    "api/auth/me.ts": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/auth/logout.ts": {
+      "memory": 128,
+      "maxDuration": 10
     }
   }
 }

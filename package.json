@@ -60,6 +60,7 @@
     "embla-carousel-react": "^8.6.0",
     "emoji-picker-react": "^4.16.1",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.2",
     "konva": "^10.0.12",
     "lucide-react": "^0.562.0",
     "motion": "^12.23.26",

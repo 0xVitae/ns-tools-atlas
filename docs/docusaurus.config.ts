@@ -2,6 +2,9 @@ import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
+const isDev = process.env.NODE_ENV === "development";
+const siteUrl = isDev ? "http://localhost:3000" : "https://nstools.xyz";
+
 const config: Config = {
   title: "NS Tools Docs",
   tagline: "Documentation for the Network School tool Atlas",
@@ -11,8 +14,12 @@ const config: Config = {
     v4: true,
   },
 
-  url: "https://nstools.xyz",
+  url: siteUrl,
   baseUrl: "/docs/",
+
+  customFields: {
+    siteUrl,
+  },
 
   onBrokenLinks: "warn",
 
@@ -45,7 +52,7 @@ const config: Config = {
     },
     announcementBar: {
       id: "atlas_link",
-      content: 'Explore the live Atlas🌐🔨 &rarr; <a href="https://nstools.xyz">Open Atlas</a>',
+      content: `Explore the live Atlas🌐🔨 &rarr; <a href="${siteUrl}">Open Atlas</a>`,
       backgroundColor: "var(--ifm-color-primary)",
       textColor: "#fff",
       isCloseable: true,
@@ -69,7 +76,7 @@ const config: Config = {
           position: "right",
         },
         {
-          href: "https://nstools.xyz",
+          href: siteUrl,
           label: "Atlas",
           position: "right",
         },
@@ -104,7 +111,7 @@ const config: Config = {
             },
             {
               label: "Tool Atlas",
-              href: "https://nstools.xyz",
+              href: siteUrl,
             },
           ],
         },
@@ -117,7 +124,7 @@ const config: Config = {
             },
             {
               label: "Request a Tool",
-              href: "https://nstools.xyz/requests",
+              href: `${siteUrl}/requests`,
             },
           ],
         },
