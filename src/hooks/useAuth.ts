@@ -17,13 +17,20 @@ async function fetchAuthStatus(): Promise<AuthState> {
   return res.json();
 }
 
+const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true';
+
 export function useAuth() {
   const { data, isLoading } = useQuery({
     queryKey: ['auth'],
     queryFn: fetchAuthStatus,
     retry: false,
     staleTime: 5 * 60 * 1000,
+    enabled: !BYPASS_AUTH,
   });
+
+  if (BYPASS_AUTH) {
+    return { isLoading: false, isAuthenticated: true, user: null };
+  }
 
   return {
     isLoading,
