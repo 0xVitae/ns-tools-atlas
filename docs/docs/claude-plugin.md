@@ -13,8 +13,8 @@ The plugin provides two skills:
 
 | Skill | Slash command | Description |
 |---|---|---|
-| **NS Auth** | `/ns-tools:ns-auth` | Full API reference and integration guide for NS Auth — the Discord membership verification API. Claude will walk you through setting up Discord OAuth, calling the verify endpoint, and handling responses in your framework of choice. |
-| **Contributing** | `/ns-tools:contributing` | Codebase guide for ns-tools-atlas. Covers project structure, data flow patterns, database schema, conventions, and how to add features, pages, and endpoints. |
+| [**NS Auth**](https://github.com/0xVitae/ns-tools-atlas/blob/main/skills/ns-auth/SKILL.md) | `/ns-tools:ns-auth` | Full API reference and integration guide for NS Auth — the Discord membership verification API. Claude will walk you through setting up Discord OAuth, calling the verify endpoint, and handling responses in your framework of choice. |
+| [**Contributing**](https://github.com/0xVitae/ns-tools-atlas/blob/main/skills/contributing/SKILL.md) | `/ns-tools:contributing` | Codebase guide for ns-tools-atlas. Covers project structure, data flow patterns, database schema, conventions, and how to add features, pages, and endpoints. |
 
 ## Installation
 
