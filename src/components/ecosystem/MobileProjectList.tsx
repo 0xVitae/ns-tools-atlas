@@ -43,7 +43,7 @@ import { ProjectTag } from "@/types/ecosystem";
 
 interface MobileProjectListProps {
   projects: EcosystemProject[];
-  onAddProject: (project: Omit<EcosystemProject, "id">) => void;
+  onAddProject?: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
   showViewToggle?: boolean;
   viewMode?: "canvas" | "list";
@@ -94,7 +94,9 @@ const ProjectCard: React.FC<{
         className="shrink-0 w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden"
         style={{
           backgroundColor: colors.bg,
-          border: `1.5px solid ${colors.border}`,
+          border: project.tags?.includes("nsOfficial")
+            ? `1.5px solid #000`
+            : `1.5px solid ${colors.border}`,
         }}
       >
         {project.imageUrl ? (
@@ -114,7 +116,22 @@ const ProjectCard: React.FC<{
 
       {/* Content */}
       <div className="flex-1 min-w-0 text-left">
-        <h3 className="font-semibold text-[15px] text-gray-900 truncate leading-tight">
+        <h3 className="font-semibold text-[15px] text-gray-900 truncate leading-tight flex items-center gap-1">
+          {project.tags?.includes("nsOfficial") && (
+            <svg
+              width="12"
+              height="8"
+              viewBox="0 0 30 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="shrink-0"
+            >
+              <path
+                d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                fill="currentColor"
+              />
+            </svg>
+          )}
           {project.name}
         </h3>
         {project.description && (
@@ -215,7 +232,22 @@ const ProjectDetailDrawer: React.FC<{
               </div>
 
               <div className="flex-1 min-w-0 pt-1">
-                <DrawerTitle className="text-xl font-bold text-left">
+                <DrawerTitle className="text-xl font-bold text-left flex items-center gap-1.5">
+                  {project.tags?.includes("nsOfficial") && (
+                    <svg
+                      width="16"
+                      height="11"
+                      viewBox="0 0 30 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="shrink-0"
+                    >
+                      <path
+                        d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  )}
                   {project.name}
                 </DrawerTitle>
                 <span
@@ -753,6 +785,38 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="px-4 pt-3 flex flex-col gap-0.5 text-[11px]">
+        <button
+          className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
+            activeTagFilters.includes("nsOfficial")
+              ? "bg-muted font-medium text-foreground"
+              : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+          }`}
+          onClick={() => toggleTagFilter("nsOfficial")}
+        >
+          <svg width="10" height="7" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z" fill="currentColor" />
+          </svg>
+          <span>NS Official</span>
+        </button>
+        <button
+          className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
+            activeTagFilters.length > 0 && !activeTagFilters.includes("nsOfficial")
+              ? "bg-muted font-medium text-foreground"
+              : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+          }`}
+          onClick={() => {
+            if (activeTagFilters.includes("nsOfficial")) {
+              toggleTagFilter("nsOfficial");
+            }
+          }}
+        >
+          <div className="w-[10px]" />
+          <span>Community</span>
+        </button>
+      </div>
+
       {/* Content */}
       <div className="px-4 py-4 space-y-5">
         {sortedCategoryIds.length === 0 ? (
@@ -820,35 +884,24 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-6 text-center flex flex-col gap-1">
-        <a
-          href="https://x.com/byornoste"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-gray-400 hover:text-gray-600"
-        >
-          Built by Byorn
-        </a>
-        <a
-          href="https://github.com/0xVitae/ns-tools-atlas"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-gray-400 hover:text-gray-600"
-        >
-          Contribute on GitHub
-        </a>
-        <a
-          href="https://cal.com/byorn/15min?user=byorn"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-gray-400 hover:text-gray-600"
-        >
-          Book Office Hours
-        </a>
-        <a href="/docs" className="text-xs text-gray-400 hover:text-gray-600">
-          Read the Docs
-        </a>
+      {/* Sticky Footer Bar */}
+      <div className="sticky bottom-0 z-40 bg-white/90 backdrop-blur-sm border-t border-gray-200 px-4 py-2 flex items-center justify-between text-[16px]">
+        {/* Left: Credits */}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <a href="https://x.com/byornoste" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Byorn</a>
+          <span className="text-border">|</span>
+          <a href="https://github.com/0xVitae/ns-tools-atlas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+          <span className="text-border">|</span>
+          <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
+        </div>
+
+        {/* Right: Stats */}
+        <span className="text-muted-foreground text-[13px]">
+          {projects.length} projects · {(() => {
+            const months = Math.floor((Date.now() - new Date("2025-01-01").getTime()) / (1000 * 60 * 60 * 24 * 30));
+            return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}mo` : `${months}mo`;
+          })()} old
+        </span>
       </div>
 
       {/* Project Detail Drawer */}

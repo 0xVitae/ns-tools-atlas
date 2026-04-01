@@ -11,6 +11,7 @@ import Graveyard from "./pages/Graveyard";
 import Requests from "./pages/Requests";
 import Pending from "./pages/Pending";
 import Admin from "./pages/Admin";
+import Callback from "./pages/Callback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ function AuthenticatedApp() {
         <Route path="/requests" element={<Requests />} />
         <Route path="/pending" element={<Pending />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/callback" element={<Callback />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

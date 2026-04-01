@@ -34,8 +34,11 @@ import {
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { toast } from "sonner";
 
+const NS_PLATFORM_URL = "https://ns.com/platform";
+const STORAGE_KEY = "ns_atlas_pending_project";
+
 interface AddProjectFormProps {
-  onAddProject: (project: Omit<EcosystemProject, "id">) => void;
+  onAddProject?: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
   categories: Category[];
   isMobile?: boolean;
@@ -274,7 +277,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         ? customCategory.id
         : formCategory;
 
-    onAddProject({
+    const projectData: Omit<EcosystemProject, "id"> = {
       name: formName.trim(),
       category: categoryToSubmit,
       description: formDescription.trim() || undefined,
@@ -287,27 +290,23 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       productImages:
         formProductImages.length > 0 ? formProductImages : undefined,
       customCategory: isCreatingNewCategory ? customCategory : undefined,
-    });
+    };
 
-    // Reset form
-    setFormName("");
-    setFormCategory("");
-    setNewCategoryName("");
-    setFormDescription("");
-    setFormUrl("");
-    setFormGuideUrl("");
-    setShowGuideUrlInput(false);
-    setFormNsProfileUrls([]);
-    setNewNsProfileUrl("");
-    setShowNsProfileInput(false);
-    setFormImageUrl("");
-    setFormEmoji(null);
-    setFormProductImages([]);
-    setNewProductImageUrl("");
-    setShowEmojiPicker(false);
-    setLogoImageValid(null);
-    setProductImagesValid({});
-    setIsFormOpen(false);
+    // Generate a unique state ID to correlate the redirect
+    const state = crypto.randomUUID();
+
+    // Save form data to localStorage so the callback page can submit it
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ state, project: projectData, timestamp: Date.now() })
+    );
+
+    // Build the return URL for NS platform to redirect back to
+    const returnUrl = `${window.location.origin}/callback`;
+    const redirectUrl = `${NS_PLATFORM_URL}?return_url=${encodeURIComponent(returnUrl)}&state=${encodeURIComponent(state)}`;
+
+    // Redirect to NS platform
+    window.location.href = redirectUrl;
   };
 
   // Form content shared between Popover and Drawer
@@ -911,10 +910,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           {isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white mr-2" />
-              Submitting...
+              Redirecting...
             </>
           ) : (
-            <>Add to Atlas</>
+            <>Complete Registration</>
           )}
         </Button>
       </div>

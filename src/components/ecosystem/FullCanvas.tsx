@@ -13,9 +13,6 @@ import {
   generateProjectSlug,
 } from "@/data/ecosystemData";
 import {
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
   ExternalLink,
   BookOpen,
   ChevronLeft,
@@ -53,7 +50,7 @@ import { AddProjectForm } from "./AddProjectForm";
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
-  onAddProject: (project: Omit<EcosystemProject, "id">) => void;
+  onAddProject?: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
   viewMode?: "canvas" | "list";
   onViewModeChange?: (mode: "canvas" | "list") => void;
@@ -1226,37 +1223,66 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         </div>
       </div>
 
-      {/* Zoom Controls - Stacked below top bar */}
-      <div className="absolute top-20 left-4 z-30">
-        <div className="bg-white rounded-lg shadow-lg border border-foreground/10 flex flex-col items-center p-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={zoomIn}
+      {/* Legend - below top bar */}
+      <div className="absolute top-[68px] left-4 z-30 hidden md:block">
+        <div className="bg-white rounded-lg px-1 py-1 shadow-sm border border-foreground/10 flex flex-col gap-0.5 text-[11px]">
+          <button
+            className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
+              activeTagFilters.includes("nsOfficial")
+                ? "bg-muted font-medium text-foreground"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+            }`}
+            onClick={() => toggleTagFilter("nsOfficial")}
           >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <span className="text-[10px] text-muted-foreground py-1">
-            {displayScale}%
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={zoomOut}
+            <svg width="10" height="7" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z" fill="currentColor" />
+            </svg>
+            <span>NS Official</span>
+          </button>
+          <button
+            className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
+              activeTagFilters.length > 0 && !activeTagFilters.includes("nsOfficial")
+                ? "bg-muted font-medium text-foreground"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+            }`}
+            onClick={() => {
+              if (activeTagFilters.includes("nsOfficial")) {
+                toggleTagFilter("nsOfficial");
+              }
+            }}
           >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <div className="h-px w-6 bg-border my-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={resetView}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
+            <div className="w-[10px]" />
+            <span>Community</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sticky Footer Bar */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-sm border-t border-border px-4 py-2 hidden md:flex items-center justify-between text-[16px]">
+        {/* Left: Canvas hint */}
+        <span className="text-muted-foreground">
+          {isTouchDevice
+            ? "Drag to pan · Pinch to zoom"
+            : "Drag to pan · Scroll to zoom"}
+        </span>
+
+        {/* Center: Stats */}
+        <span className="text-muted-foreground">
+          {projects.length} projects · Est. Jan 2025 · {(() => {
+            const months = Math.floor((Date.now() - new Date("2025-01-01").getTime()) / (1000 * 60 * 60 * 24 * 30));
+            return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}mo` : `${months}mo`;
+          })()} ago
+        </span>
+
+        {/* Right: Credits */}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <a href="https://x.com/byornoste" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Built by Byorn</a>
+          <span className="text-border">|</span>
+          <a href="https://github.com/0xVitae/ns-tools-atlas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+          <span className="text-border">|</span>
+          <a href="https://cal.com/byorn/15min?user=byorn" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Office Hours</a>
+          <span className="text-border">|</span>
+          <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
         </div>
       </div>
 
@@ -1304,43 +1330,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         />
       </div>
 
-      {/* Built by credit */}
-      <div className="absolute bottom-6 right-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border flex flex-col gap-1">
-        <a
-          href="https://x.com/byornoste"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-foreground transition-colors"
-        >
-          🔨 Built by Byorn
-        </a>
-        <a
-          href="https://github.com/0xVitae/ns-tools-atlas"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-foreground transition-colors"
-        >
-          ⭐ Contribute on GitHub
-        </a>
-        <a
-          href="https://cal.com/byorn/15min?user=byorn"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-foreground transition-colors"
-        >
-          📅 Book Office Hours
-        </a>
-        <a href="/docs" className="hover:text-foreground transition-colors">
-          📖 Read the Docs
-        </a>
-      </div>
-
-      {/* Canvas hint */}
-      <div className="absolute bottom-6 left-6 z-20 text-xs text-muted-foreground bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
-        {isTouchDevice
-          ? "Drag to pan • Pinch to zoom"
-          : "Drag to pan • Scroll to zoom"}
-      </div>
 
       {/* Canvas */}
       <div
@@ -1467,9 +1456,9 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               height: displaySize * 0.72,
                               backgroundColor: colors.bg,
                               color: colors.text,
-                              border: `2px solid ${
-                                isSelected ? colors.text : colors.border
-                              }`,
+                              border: project.tags?.includes("nsOfficial")
+                                ? `2px solid #000`
+                                : `2px solid ${isSelected ? colors.text : colors.border}`,
                               fontSize: project.emoji
                                 ? displaySize * 0.4
                                 : displaySize * 0.28,
@@ -1491,7 +1480,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                             )}
                           </div>
                           <div
-                            className="mt-1 text-center leading-tight transition-all duration-150 ease-out"
+                            className="mt-1 text-center leading-tight transition-all duration-150 ease-out flex items-center justify-center gap-1"
                             style={{
                               fontSize: Math.max(9, displaySize * 0.18),
                               width: displaySize + 20,
@@ -1503,7 +1492,22 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               fontWeight: isSelected || isHovered ? 600 : 400,
                             }}
                           >
-                            {project.name}
+                            {project.tags?.includes("nsOfficial") && (
+                              <svg
+                                width="10"
+                                height="7"
+                                viewBox="0 0 30 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="shrink-0"
+                              >
+                                <path
+                                  d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                                  fill="currentColor"
+                                />
+                              </svg>
+                            )}
+                            <span className="truncate">{project.name}</span>
                           </div>
                         </div>
                       </HoverCardTrigger>

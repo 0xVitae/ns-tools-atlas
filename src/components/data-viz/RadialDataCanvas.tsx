@@ -54,38 +54,7 @@ export default function RadialDataCanvas() {
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-gradient-to-br from-slate-50 to-white overflow-hidden">
-      {/* Top Bar */}
-      <div className="absolute top-4 left-4 z-30">
-        <div className="bg-white rounded-xl px-5 py-3 shadow-lg border border-foreground/10 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => navigate("/")}
-            title="Back to Atlas"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="h-6 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <img
-              src="/favicon.png"
-              alt="NS Tools Atlas"
-              width="24"
-              height="24"
-              className="rounded"
-            />
-            <div>
-              <h1 className="text-sm font-bold text-foreground leading-tight">
-                Engagement Data
-              </h1>
-              <p className="text-[10px] text-muted-foreground">
-                NS Ecosystem Activity
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Top Bar - rendered in Data.tsx to escape stacking context */}
 
       {/* Stats Cards - Top Right */}
       <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
