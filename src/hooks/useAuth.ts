@@ -5,6 +5,7 @@ export interface AuthUser {
   username: string;
   avatar: string | null;
   name: string | null;
+  nsUsername: string | null;
 }
 
 interface AuthState {

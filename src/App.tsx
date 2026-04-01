@@ -13,6 +13,9 @@ import Pending from "./pages/Pending";
 import Admin from "./pages/Admin";
 import Callback from "./pages/Callback";
 import NotFound from "./pages/NotFound";
+import OverlayV1 from "./pages/OverlayV1";
+import OverlayV2 from "./pages/OverlayV2";
+import OverlayV3 from "./pages/OverlayV3";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +35,9 @@ function AuthenticatedApp() {
         <Route path="/pending" element={<Pending />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/overlay-v1" element={<OverlayV1 />} />
+        <Route path="/overlay-v2" element={<OverlayV2 />} />
+        <Route path="/overlay-v3" element={<OverlayV3 />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

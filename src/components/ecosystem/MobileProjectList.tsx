@@ -18,6 +18,7 @@ import {
   ListFilter,
   Skull,
   Lightbulb,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
@@ -103,7 +105,7 @@ const ProjectCard: React.FC<{
           <img
             src={project.imageUrl}
             alt={project.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain p-1"
           />
         ) : project.emoji ? (
           <span className="text-lg">{project.emoji}</span>
@@ -217,7 +219,7 @@ const ProjectDetailDrawer: React.FC<{
                   <img
                     src={project.imageUrl}
                     alt={project.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain p-1"
                   />
                 ) : project.emoji ? (
                   <span className="text-3xl">{project.emoji}</span>
@@ -607,6 +609,14 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                     <Lightbulb className="h-4 w-4 text-amber-500" />
                     Requests
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="gap-2 text-muted-foreground"
+                    onClick={() => { fetch("/api/auth/logout").then(() => { window.location.replace("/"); }); }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -787,6 +797,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
 
       {/* Legend */}
       <div className="px-4 pt-3 flex flex-col gap-0.5 text-[11px]">
+        <span className="text-[10px] font-medium text-muted-foreground px-2">Legend:</span>
         <button
           className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
             activeTagFilters.includes("nsOfficial")

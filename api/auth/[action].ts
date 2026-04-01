@@ -1,12 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { SignJWT, jwtVerify } from 'jose';
 
-const baseUrl = process.env.BASE_URL
-  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000');
+function getBaseUrl(req: VercelRequest) {
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+  return `${proto}://${host}`;
+}
 
-const callbackUri = `${baseUrl}/api/auth/callback`;
-
-function handleDiscord(_req: VercelRequest, res: VercelResponse) {
+function handleDiscord(req: VercelRequest, res: VercelResponse) {
+  const callbackUri = `${getBaseUrl(req)}/api/auth/callback`;
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
     redirect_uri: callbackUri,
@@ -21,6 +23,9 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
   if (!code || typeof code !== 'string') {
     return res.redirect('/?error=missing_code');
   }
+
+  const baseUrl = getBaseUrl(req);
+  const callbackUri = `${baseUrl}/api/auth/callback`;
 
   try {
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
@@ -79,12 +84,14 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
       username: nsData.discordUsername || discordUser.username,
       avatar: discordUser.avatar,
       name: nsData.name || discordUser.global_name,
+      nsUsername: nsData.username || null,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('30d')
       .sign(secret);
 
-    res.setHeader('Set-Cookie', `ns_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${baseUrl.startsWith('https') ? '; Secure' : ''}`);
+    const isSecure = baseUrl.startsWith('https');
+    res.setHeader('Set-Cookie', `ns_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`);
     res.redirect('/');
   } catch (err) {
     console.error('Auth callback error:', err);
@@ -93,6 +100,7 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleMe(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
   const cookie = req.headers.cookie;
   const token = cookie?.split(';').map(c => c.trim()).find(c => c.startsWith('ns_session='))?.split('=').slice(1).join('=');
 
@@ -110,6 +118,7 @@ async function handleMe(req: VercelRequest, res: VercelResponse) {
         username: payload.username,
         avatar: payload.avatar,
         name: payload.name,
+        nsUsername: payload.nsUsername || null,
       },
     });
   } catch {

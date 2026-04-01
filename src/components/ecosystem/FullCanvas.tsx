@@ -23,6 +23,7 @@ import {
   BarChart3,
   Skull,
   Lightbulb,
+  LogOut,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
@@ -54,6 +56,7 @@ interface FullCanvasProps {
   isSubmitting?: boolean;
   viewMode?: "canvas" | "list";
   onViewModeChange?: (mode: "canvas" | "list") => void;
+  hideOverlay?: boolean;
 }
 
 // Product Image Carousel Component with prev/next buttons
@@ -243,6 +246,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   onAddProject,
   isSubmitting,
   onViewModeChange,
+  hideOverlay,
 }) => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1012,6 +1016,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
   return (
     <div className="fixed inset-0 bg-white overflow-hidden">
+      {!hideOverlay && (<>
       {/* Top Bar */}
       <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
         <div className="bg-white rounded-xl px-5 py-3 shadow-lg border border-foreground/10 flex items-center gap-4">
@@ -1211,6 +1216,14 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                 <Skull className="h-4 w-4 text-gray-400" />
                 Graveyard
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 text-muted-foreground"
+                onClick={() => { fetch("/api/auth/logout").then(() => { window.location.replace("/"); }); }}
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
@@ -1225,7 +1238,8 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
       {/* Legend - below top bar */}
       <div className="absolute top-[68px] left-4 z-30 hidden md:block">
-        <div className="bg-white rounded-lg px-1 py-1 shadow-sm border border-foreground/10 flex flex-col gap-0.5 text-[11px]">
+        <div className="bg-white rounded-lg px-2 py-1.5 shadow-sm border border-foreground/10 flex flex-col gap-0.5 text-[11px]">
+          <span className="text-[10px] font-medium text-muted-foreground px-1">Legend:</span>
           <button
             className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
               activeTagFilters.includes("nsOfficial")
@@ -1329,7 +1343,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           categories={categories}
         />
       </div>
-
+      </>)}
 
       {/* Canvas */}
       <div
@@ -1473,7 +1487,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                               <img
                                 src={project.imageUrl}
                                 alt={project.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain p-1"
                               />
                             ) : (
                               project.emoji || getInitials(project.name)

@@ -42,6 +42,12 @@ interface AddProjectFormProps {
   isSubmitting?: boolean;
   categories: Category[];
   isMobile?: boolean;
+  /** When provided, the form operates in edit mode with pre-filled values */
+  editProject?: EcosystemProject;
+  /** Called on save in edit mode */
+  onSaveEdit?: (projectId: string, updates: Record<string, unknown>) => Promise<void>;
+  /** When true, renders just the form content without popover/drawer wrapper */
+  renderFormOnly?: boolean;
 }
 
 const CREATE_NEW_CATEGORY = "__create_new__";
@@ -51,24 +57,29 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   isSubmitting,
   categories,
   isMobile = false,
+  editProject: editingProject,
+  onSaveEdit,
+  renderFormOnly = false,
 }) => {
+  const isEditMode = !!editingProject;
+
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState<string>("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formUrl, setFormUrl] = useState("");
-  const [formGuideUrl, setFormGuideUrl] = useState("");
-  const [showGuideUrlInput, setShowGuideUrlInput] = useState(false);
-  const [formImageUrl, setFormImageUrl] = useState("");
-  const [formEmoji, setFormEmoji] = useState<string | null>(null);
+  const [formName, setFormName] = useState(editingProject?.name || "");
+  const [formCategory, setFormCategory] = useState<string>(editingProject?.category || "");
+  const [formDescription, setFormDescription] = useState(editingProject?.description || "");
+  const [formUrl, setFormUrl] = useState(editingProject?.url || "");
+  const [formGuideUrl, setFormGuideUrl] = useState(editingProject?.guideUrl || "");
+  const [showGuideUrlInput, setShowGuideUrlInput] = useState(!!editingProject?.guideUrl);
+  const [formImageUrl, setFormImageUrl] = useState(editingProject?.imageUrl || "");
+  const [formEmoji, setFormEmoji] = useState<string | null>(editingProject?.emoji || null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Product images gallery state (max 3)
-  const [formProductImages, setFormProductImages] = useState<string[]>([]);
+  const [formProductImages, setFormProductImages] = useState<string[]>(editingProject?.productImages || []);
   const [newProductImageUrl, setNewProductImageUrl] = useState("");
 
   // NS Profile URLs state (max 3)
-  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>([]);
+  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>(editingProject?.nsProfileUrls || []);
   const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
   const [showNsProfileInput, setShowNsProfileInput] = useState(false);
 
@@ -145,12 +156,12 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     formName.trim() && isWebsiteUrlValid && isGuideUrlValid
   );
 
-  // Progressive reveal conditions (require BOTH step 1 AND step 2 to be complete for step 3)
-  const showStep3 = isStep1Complete && isStep2Complete;
+  // Progressive reveal conditions — in edit mode, show all steps immediately
+  const showStep3 = isEditMode || (isStep1Complete && isStep2Complete);
   const showStep4 =
-    showStep3 &&
-    Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim()));
-  const showStep5 = showStep4 && Boolean(formDescription.trim());
+    isEditMode || (showStep3 &&
+    Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim())));
+  const showStep5 = isEditMode || (showStep4 && Boolean(formDescription.trim()));
 
   // Helper to add an NS Profile URL
   const handleAddNsProfileUrl = () => {
@@ -229,7 +240,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     };
   }, [isCreatingNewCategory, newCategoryName]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting) return;
 
     if (!formName.trim()) {
@@ -277,6 +288,20 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         ? customCategory.id
         : formCategory;
 
+    // In edit mode, call onSaveEdit with only the editable fields
+    if (isEditMode && onSaveEdit && editingProject) {
+      await onSaveEdit(editingProject.id, {
+        description: formDescription.trim() || null,
+        url: formUrl.trim() || null,
+        guideUrl: formGuideUrl.trim() || null,
+        imageUrl: formImageUrl.trim() || null,
+        emoji: formEmoji || null,
+        productImages: formProductImages.length > 0 ? formProductImages : null,
+        nsProfileUrls: formNsProfileUrls.length > 0 ? formNsProfileUrls : null,
+      });
+      return;
+    }
+
     const projectData: Omit<EcosystemProject, "id"> = {
       name: formName.trim(),
       category: categoryToSubmit,
@@ -316,7 +341,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       <div className="relative bg-muted/30 flex-shrink-0">
         <div className="px-4 py-3">
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
-            Add Project
+            {isEditMode ? "Edit Project" : "Add Project"}
           </h3>
         </div>
         {/* Progress bar as bottom border */}
@@ -910,15 +935,20 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           {isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white mr-2" />
-              Redirecting...
+              {isEditMode ? "Saving..." : "Redirecting..."}
             </>
           ) : (
-            <>Complete Registration</>
+            <>{isEditMode ? "Save Changes" : "Complete Registration"}</>
           )}
         </Button>
       </div>
     </>
   );
+
+  // Render just the form content (used in edit panels)
+  if (renderFormOnly) {
+    return <div className="flex flex-col overflow-hidden">{formContent}</div>;
+  }
 
   // Mobile: use Drawer, Desktop: use Popover
   if (isMobile) {

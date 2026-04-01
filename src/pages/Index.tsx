@@ -1,23 +1,148 @@
-import React, { useState } from "react";
-import { FullCanvas } from "@/components/ecosystem/FullCanvas";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Canvas } from "@/components/ecosystem/Canvas";
 import { MobileProjectList } from "@/components/ecosystem/MobileProjectList";
+import { EcosystemProject } from "@/types/ecosystem";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import {
+  buildCategoriesFromProjects,
+  getCategoryColor,
+  getCategoryName,
+} from "@/data/ecosystemData";
+import { editProject } from "@/lib/api";
+import { AddProjectForm } from "@/components/ecosystem/AddProjectForm";
+import { Footer } from "@/components/Footer";
+import ActionSearchBar, {
+  Action,
+  ActionSearchBarRef,
+} from "@/components/kokonutui/action-search-bar";
+import { toast } from "sonner";
+import {
+  Search,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Layers,
+  Clock,
+  Flag,
+  ExternalLink,
+  BookOpen,
+  X,
+  Users,
+  Calendar,
+  Pencil,
+  Lightbulb,
+  HelpCircle,
+} from "lucide-react";
 
 const Index = () => {
   const { data: projects = [], isLoading, error } = useProjects();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
-  // Default to list view on mobile, canvas on desktop
-  const [viewMode, setViewMode] = useState<"canvas" | "list">(() =>
-    typeof window !== "undefined" && window.innerWidth < 768 ? "list" : "canvas"
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<"canvas" | "list">("canvas");
+  const [selectedProject, setSelectedProject] =
+    useState<EcosystemProject | null>(null);
+  const [editingProject, setEditingProject] = useState<EcosystemProject | null>(
+    null,
   );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
+  const searchBarRef = useRef<ActionSearchBarRef>(null);
+
+  // Find projects the logged-in user owns (NS profile URL match)
+  const ownedProjectIds = useMemo(() => {
+    if (!user?.nsUsername) return new Set<string>();
+    const userUrl = `https://ns.com/${user.nsUsername}`.toLowerCase();
+    const ids = new Set<string>();
+    for (const p of projects) {
+      if (
+        p.nsProfileUrls?.some(
+          (u) =>
+            u.toLowerCase() === userUrl ||
+            u.toLowerCase() ===
+              `https://www.ns.com/${user.nsUsername}`.toLowerCase(),
+        )
+      ) {
+        ids.add(p.id);
+      }
+    }
+    return ids;
+  }, [projects, user?.nsUsername]);
+
+  // Convert projects to search actions
+  const searchActions: Action[] = useMemo(() => {
+    return projects.map((project) => ({
+      id: project.id,
+      label: project.name,
+      icon: project.emoji ? (
+        <span className="text-base">{project.emoji}</span>
+      ) : (
+        <div
+          className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+          style={{
+            backgroundColor: `${getCategoryColor(project.category)}20`,
+            color: getCategoryColor(project.category),
+          }}
+        >
+          {project.name.slice(0, 2).toUpperCase()}
+        </div>
+      ),
+      end: getCategoryName(project.category),
+    }));
+  }, [projects]);
+
+  const handleSearchSelect = useCallback(
+    (action: Action) => {
+      const project = projects.find((p) => p.id === action.id);
+      if (project) {
+        setSelectedProject(project);
+        setSearchOpen(false);
+      }
+    },
+    [projects],
+  );
+
+  const categories = useMemo(
+    () => buildCategoriesFromProjects(projects),
+    [projects],
+  );
+
+  const projectAge = useMemo(() => {
+    const months = Math.floor(
+      (Date.now() - new Date("2025-01-01").getTime()) /
+        (1000 * 60 * 60 * 24 * 30),
+    );
+    return months >= 12
+      ? `${Math.floor(months / 12)}y ${months % 12}mo`
+      : `${months}mo`;
+  }, []);
+
+  const latestUpdate = useMemo(() => {
+    const dates = projects
+      .map((p) => p.addedAt)
+      .filter(Boolean)
+      .map((d) => new Date(d!).getTime());
+    if (dates.length === 0) return null;
+    const latest = new Date(Math.max(...dates));
+    return latest.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, [projects]);
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white">
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading ecosystem...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground font-mono text-sm tracking-wide">
+            LOADING ATLAS...
+          </p>
         </div>
       </div>
     );
@@ -25,7 +150,7 @@ const Index = () => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white">
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-red-600 mb-2">Failed to load projects</p>
           <button
@@ -39,27 +164,756 @@ const Index = () => {
     );
   }
 
-  // Determine which view to show - simply respect viewMode
-  const showListView = viewMode === "list";
+  if (isMobile || viewMode === "list") {
+    return (
+      <MobileProjectList
+        projects={projects}
+        showViewToggle={!isMobile}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+    );
+  }
 
   return (
-    <>
-      {showListView ? (
-        <MobileProjectList
-          projects={projects}
-          showViewToggle={!isMobile}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
-      ) : (
-        <FullCanvas
-          projects={projects}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
+    <div className="fixed inset-0 overflow-hidden">
+      {/* Canvas fills the whole viewport */}
+      <Canvas projects={projects} onSelectProject={setSelectedProject} />
+
+      {/* ======= TOP RESOURCE BAR ======= */}
+      <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <div className="border-b-2 border-foreground/20">
+            <div className="bg-background/90 backdrop-blur-sm border-b border-foreground/10 px-4 py-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/favicon.png"
+                    alt="NS Tools Atlas"
+                    width="20"
+                    height="20"
+                    className="rounded"
+                  />
+                  <span className="text-sm font-bold tracking-wide text-foreground">
+                    NS TOOLS
+                  </span>
+                  <div className="h-4 w-px bg-foreground/20" />
+                  <span className="text-[10px] text-muted-foreground font-mono tracking-wider uppercase">
+                    ATLAS
+                  </span>
+                  {/* Expandable Search */}
+                  <div className="relative flex items-center ml-2">
+                    <button
+                      onClick={() => {
+                        setSearchOpen(!searchOpen);
+                        if (!searchOpen) {
+                          setTimeout(() => searchBarRef.current?.focus(), 50);
+                        }
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-foreground text-background hover:bg-foreground/80 transition-colors shrink-0"
+                    >
+                      {searchOpen ? (
+                        <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+                      ) : (
+                        <Search className="w-3.5 h-3.5" strokeWidth={2.5} />
+                      )}
+                    </button>
+                    {searchOpen && (
+                      <div
+                        className="absolute left-0 top-full mt-1.5 z-[100]"
+                        onBlur={(e) => {
+                          if (
+                            !e.currentTarget.contains(e.relatedTarget as Node)
+                          ) {
+                            setTimeout(() => setSearchOpen(false), 200);
+                          }
+                        }}
+                      >
+                        <ActionSearchBar
+                          ref={searchBarRef}
+                          actions={searchActions}
+                          defaultOpen
+                          placeholder="Search projects..."
+                          onSelect={handleSearchSelect}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="hidden md:flex items-center gap-1">
+                  <ResourceChip
+                    icon={<Layers className="w-3 h-3" />}
+                    label="Projects"
+                    value={projects.length}
+                  />
+                  <ResourceChip
+                    icon={<Flag className="w-3 h-3" />}
+                    label="Categories"
+                    value={categories.length}
+                  />
+                  <ResourceChip
+                    icon={<Clock className="w-3 h-3" />}
+                    label="Age"
+                    value={projectAge}
+                  />
+                  <ResourceChip
+                    icon={<Compass className="w-3 h-3" />}
+                    label="Latest Update"
+                    value={latestUpdate || "—"}
+                  />
+                  <div className="h-4 w-px bg-foreground/15 mx-1" />
+                  <button
+                    onClick={() => setViewMode(viewMode === "canvas" ? "list" : "canvas")}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <List className="w-3 h-3" />
+                    <span className="text-[10px] uppercase tracking-wider">
+                      List View
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ======= YOUR PROJECTS TAB BAR ======= */}
+      {ownedProjectIds.size > 0 && (
+        <div className="absolute top-[46px] left-0 right-0 z-40 pointer-events-none">
+          <div className="pointer-events-auto">
+            <div className="px-4 py-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+              <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase shrink-0">
+                YOUR PROJECTS
+              </span>
+              <div className="h-3 w-px bg-foreground/15" />
+              {projects
+                .filter((p) => ownedProjectIds.has(p.id))
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() =>
+                      setEditingProject(editingProject?.id === p.id ? null : p)
+                    }
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors shrink-0 ${
+                      editingProject?.id === p.id
+                        ? "bg-foreground text-background font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <Pencil className="w-3 h-3" />
+                    {p.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
       )}
-    </>
+
+      {/* ======= LEFT PANEL — Legend ======= */}
+      <div
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} left-3 z-40 hidden md:block pointer-events-auto`}
+      >
+        <Panel title="LEGEND">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-foreground/80">
+              <svg
+                width="10"
+                height="7"
+                viewBox="0 0 30 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                  fill="currentColor"
+                />
+              </svg>
+              NS Official
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-foreground/80">
+              <div className="w-[10px]" />
+              Community
+            </div>
+          </div>
+        </Panel>
+
+        <div className="mt-2">
+          <Panel title="CATEGORIES">
+            <div className="flex flex-col gap-0.5 max-h-[240px] overflow-y-auto scrollbar-hide">
+              {categories.map((cat) => {
+                const count = projects.filter(
+                  (p) => p.category?.toLowerCase() === cat.id.toLowerCase(),
+                ).length;
+                return (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between px-2 py-0.5 text-[11px]"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="w-2 h-2 rounded-sm"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="text-foreground/80">{cat.name}</span>
+                    </div>
+                    <span className="text-muted-foreground font-mono text-[10px]">
+                      {count}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        </div>
+      </div>
+
+      {/* ======= RIGHT PANEL — Project Detail ======= */}
+      <div
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+          selectedProject && !editingProject
+            ? "translate-x-0 opacity-100"
+            : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
+        {selectedProject && (
+          <ProjectDetailPanel
+            project={selectedProject}
+            onClose={() => setSelectedProject(null)}
+          />
+        )}
+      </div>
+
+      {/* ======= RIGHT PANEL — Edit Project ======= */}
+      <div
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+          editingProject
+            ? "translate-x-0 opacity-100"
+            : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
+        {editingProject && (
+          <div className="w-[340px] max-h-[calc(100vh-180px)] flex flex-col">
+            {/* Civ-style title tab */}
+            <div className="flex justify-between items-end pr-3">
+              <div className="bg-background/90 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5 ml-3">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                  EDIT — {editingProject.name}
+                </span>
+              </div>
+              <button
+                onClick={() => setEditingProject(null)}
+                className="p-1 mb-0.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Panel body with shared form */}
+            <div className="border-l-2 border-t-2 border-b-2 border-foreground/20 rounded-l-lg bg-background/95 backdrop-blur-sm overflow-y-auto flex-1">
+              <AddProjectForm
+                categories={categories}
+                editProject={editingProject}
+                isSubmitting={false}
+                renderFormOnly
+                onSaveEdit={async (projectId, updates) => {
+                  const result = await editProject(projectId, updates);
+                  if (result.success) {
+                    toast.success("Project updated");
+                    setEditingProject(null);
+                    window.location.reload();
+                  } else {
+                    toast.error(result.error || "Failed to save");
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ======= FAQ MODAL ======= */}
+      {faqOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setFaqOpen(false)}
+          />
+          <div className="relative w-[380px] max-w-[90vw] max-h-[80vh] flex flex-col">
+            {/* Civ-style title tab */}
+            <div className="flex">
+              <div className="bg-background/95 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                  NS TOOLS ATLAS — FAQ
+                </span>
+              </div>
+            </div>
+            {/* Panel body */}
+            <div className="border-2 border-foreground/20 rounded-tr rounded-b bg-background/95 backdrop-blur-sm overflow-y-auto">
+              <div className="border border-foreground/5 rounded-tr rounded-b p-4 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h2 className="text-sm font-bold text-foreground">
+                    Quick Guide
+                  </h2>
+                  <button
+                    onClick={() => setFaqOpen(false)}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <FaqItem
+                  q="What is NS Tools Atlas?"
+                  a="An interactive map of tools, projects, and resources in the Network School ecosystem. Explore, discover, and contribute."
+                />
+                <FaqItem
+                  q="How do I add a project?"
+                  a='Click the "Add Project" button in the bottom-right corner. Fill in the details and submit for review.'
+                />
+                <FaqItem
+                  q="How do I request a project?"
+                  a={
+                    "Click the lightbulb button or visit the Requests page. Suggest tools you'd like to see and upvote others."
+                  }
+                />
+                <FaqItem
+                  q="Can I edit my project?"
+                  a={
+                    'Yes — log in with your NS account. If your NS profile URL matches a project, it will appear in the "Your Projects" bar at the top.'
+                  }
+                />
+                <FaqItem
+                  q="What are categories?"
+                  a="Projects are grouped by type (Networks, Media, Education, etc.). You can also create custom categories when adding a project."
+                />
+
+                <div className="pt-2 border-t border-foreground/10">
+                  <a
+                    href="/docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-xs text-primary hover:underline font-medium"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    View full documentation
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======= FLOATING ACTION BUTTONS (above footer) ======= */}
+      <div className="absolute bottom-[90px] right-4 z-50 pointer-events-auto flex flex-col items-end gap-2">
+        <div className="flex flex-col gap-2 items-end">
+          <button
+            onClick={() => navigate("/requests?new")}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-foreground/20 bg-background/90 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/50 transition-all shadow-lg"
+          >
+            <span className="text-[10px] font-bold tracking-wider uppercase">
+              Request
+            </span>
+            <Lightbulb className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setFaqOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-foreground/20 bg-background/90 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/50 transition-all shadow-lg"
+          >
+            <span className="text-[10px] font-bold tracking-wider uppercase">
+              Guide
+            </span>
+            <HelpCircle className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ======= BOTTOM HUD RIBBON ======= */}
+      <Footer
+        activePage="atlas"
+        centerContent={
+          <span className="text-muted-foreground text-[10px] font-mono tracking-wider">
+            DRAG TO PAN &middot; SCROLL TO ZOOM
+          </span>
+        }
+        rightContent={<AddProjectForm categories={categories} />}
+      />
+    </div>
   );
 };
+
+/* ======= Sub-components ======= */
+
+function ResourceChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-foreground/10 bg-background/50">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+        {label}
+      </span>
+      <span className="text-xs font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div className="flex">
+        <div className="bg-background/90 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5">
+          <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+            {title}
+          </span>
+        </div>
+      </div>
+      <div className="border-2 border-foreground/20 rounded-tr rounded-b bg-background/90 backdrop-blur-sm">
+        <div className="border border-foreground/5 rounded-tr rounded-b p-1">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Right-side project detail panel — replaces hover cards */
+function ProjectDetailPanel({
+  project,
+  onClose,
+}: {
+  project: EcosystemProject;
+  onClose: () => void;
+}) {
+  const [imageIndex, setImageIndex] = useState(0);
+  const categoryColor = getCategoryColor(project.category);
+  const categoryName = getCategoryName(project.category);
+
+  const hex = categoryColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  return (
+    <div className="w-[340px] max-h-[calc(100vh-180px)] flex flex-col">
+      {/* Title tab */}
+      <div className="flex justify-end pr-3">
+        <div className="bg-background/90 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5">
+          <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+            PROJECT INTEL
+          </span>
+        </div>
+      </div>
+
+      {/* Panel body */}
+      <div className="border-l-2 border-t-2 border-b-2 border-foreground/20 rounded-l-lg bg-background/95 backdrop-blur-sm overflow-hidden flex flex-col">
+        <div className="border-l border-t border-b border-foreground/5 rounded-l-lg p-0 overflow-y-auto flex-1 scrollbar-hide">
+          {/* Header with colored accent */}
+          <div
+            className="px-4 py-3 border-b border-foreground/10"
+            style={{ backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)` }}
+          >
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-col items-center text-center -mt-1">
+              {/* Logo / Emoji */}
+              <div
+                className="w-16 h-16 rounded-lg flex items-center justify-center font-bold overflow-hidden"
+                style={{
+                  color: categoryColor,
+                  fontSize: project.emoji ? 36 : 20,
+                }}
+              >
+                {project.imageUrl ? (
+                  <img
+                    src={project.imageUrl}
+                    alt={project.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  project.emoji ||
+                  project.name
+                    .split(" ")
+                    .map((w) => w[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                )}
+              </div>
+              {/* Title */}
+              <h2 className="font-bold text-sm text-foreground mt-2">
+                {project.name}
+              </h2>
+              {/* Tags row */}
+              <div className="flex items-center gap-1.5 mt-1.5">
+                {project.tags?.includes("nsOfficial") && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-foreground text-background text-[9px] font-medium shrink-0">
+                    <svg
+                      width="10"
+                      height="7"
+                      viewBox="0 0 30 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    Official
+                  </span>
+                )}
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                  style={{
+                    backgroundColor: `rgba(${r}, ${g}, ${b}, 0.15)`,
+                    color: categoryColor,
+                  }}
+                >
+                  {categoryName}
+                </span>
+                {project.tags?.includes("free") && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium">
+                    Free
+                  </span>
+                )}
+                {project.tags?.includes("paid") && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                    Paid
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Content sections */}
+          <div className="px-4 py-3 space-y-4">
+            {/* Description */}
+            {project.description && (
+              <p className="text-sm text-foreground/80 leading-relaxed">
+                {project.description}
+              </p>
+            )}
+
+            {/* CTA */}
+            {project.url && (
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full py-2 rounded-lg border-2 border-foreground/20 bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors"
+              >
+                Visit Tool
+              </a>
+            )}
+
+            {/* NS Profiles / Active Users */}
+            {project.nsProfileUrls && project.nsProfileUrls.length > 0 && (
+              <DetailSection label="NS PROFILES">
+                <div className="flex flex-col gap-1.5">
+                  {project.nsProfileUrls.map((profileUrl, idx) => {
+                    const username = profileUrl.split("/").pop() || profileUrl;
+                    return (
+                      <a
+                        key={idx}
+                        href={profileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/30 border border-foreground/5 text-xs hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-primary font-medium">
+                          @{username}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </DetailSection>
+            )}
+
+            {/* Product Images */}
+            {project.productImages && project.productImages.length > 0 && (
+              <DetailSection label="MEDIA">
+                <div className="relative">
+                  <div className="rounded-lg overflow-hidden border border-foreground/10 bg-muted/20">
+                    <img
+                      src={project.productImages[imageIndex]}
+                      alt={`${project.name} screenshot ${imageIndex + 1}`}
+                      className="w-full h-auto object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                  {project.productImages.length > 1 && (
+                    <div className="flex items-center justify-between mt-2">
+                      <button
+                        onClick={() =>
+                          setImageIndex((prev) =>
+                            prev === 0
+                              ? project.productImages!.length - 1
+                              : prev - 1,
+                          )
+                        }
+                        className="w-6 h-6 rounded border border-foreground/15 flex items-center justify-center hover:bg-muted/50 transition-colors"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {project.productImages.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setImageIndex(idx)}
+                            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                              idx === imageIndex
+                                ? "bg-foreground"
+                                : "bg-foreground/20"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        onClick={() =>
+                          setImageIndex((prev) =>
+                            prev === project.productImages!.length - 1
+                              ? 0
+                              : prev + 1,
+                          )
+                        }
+                        className="w-6 h-6 rounded border border-foreground/15 flex items-center justify-center hover:bg-muted/50 transition-colors"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </DetailSection>
+            )}
+
+            {/* Status & Info */}
+            <DetailSection label="STATUS">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-foreground/70">
+                    {project.status === "dead" ? "Inactive" : "Active"}
+                  </span>
+                </div>
+                {project.addedAt && (
+                  <div className="flex items-center gap-1.5 text-xs text-foreground/70">
+                    <Calendar className="w-3 h-3" />
+                    Release Date:{" "}
+                    {new Date(project.addedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </div>
+                )}
+              </div>
+            </DetailSection>
+
+            {/* Links */}
+            {(project.url || project.guideUrl) && (
+              <DetailSection label="LINKS">
+                <div className="flex flex-col gap-1.5">
+                  {project.url && (
+                    <a
+                      href={project.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {project.url.replace(/^https?:\/\/(www\.)?/, "")}
+                      </span>
+                    </a>
+                  )}
+                  {project.guideUrl && (
+                    <a
+                      href={project.guideUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Guide</span>
+                    </a>
+                  )}
+                </div>
+              </DetailSection>
+            )}
+
+            {/* Tags */}
+            {project.tags && project.tags.length > 0 && (
+              <DetailSection label="TAGS">
+                <div className="flex flex-wrap gap-1.5">
+                  {project.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] px-2 py-0.5 rounded border border-foreground/10 bg-muted/30 text-foreground/70 font-mono uppercase tracking-wider"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </DetailSection>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Labeled section within the detail panel */
+function DetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase mb-1.5">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** FAQ item used in the help modal */
+function FaqItem({ q, a }: { q: string; a: string }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-foreground">{q}</p>
+      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+        {a}
+      </p>
+    </div>
+  );
+}
 
 export default Index;

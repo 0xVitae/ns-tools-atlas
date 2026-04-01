@@ -161,3 +161,30 @@ export async function submitProject(
     return { success: false, error: 'Network error - please try again' };
   }
 }
+
+/**
+ * Edit a project the authenticated user owns (matched via NS profile URL)
+ */
+export async function editProject(
+  projectId: string,
+  updates: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/edit-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, updates }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Update failed' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Edit project error:', error);
+    return { success: false, error: 'Network error - please try again' };
+  }
+}
