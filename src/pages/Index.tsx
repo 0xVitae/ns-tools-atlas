@@ -53,7 +53,9 @@ const Index = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"canvas" | "list">("canvas");
+  const [viewMode, setViewMode] = useState<"canvas" | "list">(() =>
+    window.location.hash === "#list" ? "list" : "canvas"
+  );
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<EcosystemProject | null>(null);
@@ -333,7 +335,11 @@ const Index = () => {
                   />
                   <div className="h-4 w-px bg-foreground/15 mx-1" />
                   <button
-                    onClick={() => setViewMode(viewMode === "canvas" ? "list" : "canvas")}
+                    onClick={() => {
+                      const next = viewMode === "canvas" ? "list" : "canvas";
+                      setViewMode(next);
+                      window.location.hash = next === "list" ? "#list" : "";
+                    }}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <List className="w-3 h-3" />
