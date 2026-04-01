@@ -621,7 +621,7 @@ const Index = () => {
 
       {/* ======= RIGHT PANEL — Project Detail ======= */}
       <div
-        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-[60] hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
           selectedProject && !editingProject
             ? "translate-x-0 opacity-100"
             : "translate-x-full opacity-0 pointer-events-none"
