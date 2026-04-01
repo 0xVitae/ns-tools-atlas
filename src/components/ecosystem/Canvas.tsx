@@ -20,6 +20,10 @@ import ActionSearchBar, {
 interface CanvasProps {
   projects: EcosystemProject[];
   onSelectProject?: (project: EcosystemProject | null) => void;
+  /** When set, only these project IDs are highlighted; the rest are greyed out */
+  highlightedIds?: Set<string> | null;
+  /** Externally selected project ID — Canvas will highlight and pan to it */
+  selectedProjectId?: string | null;
 }
 
 // Layout constants
@@ -132,6 +136,8 @@ const calculateLayout = (
 export const Canvas: React.FC<CanvasProps> = ({
   projects,
   onSelectProject,
+  highlightedIds,
+  selectedProjectId,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -778,6 +784,31 @@ export const Canvas: React.FC<CanvasProps> = ({
     return () => container.removeEventListener("wheel", wheelHandler);
   }, [applyTransform]);
 
+  // Sync external selectedProjectId → internal selectedItem and pan to it
+  useEffect(() => {
+    if (selectedProjectId === undefined) return;
+    setSelectedItem(selectedProjectId);
+    if (selectedProjectId) {
+      const project = projects.find((p) => p.id === selectedProjectId);
+      if (project) {
+        const boxLayout = dynamicLayout[project.category];
+        const pos = categoryPositions[project.category]?.[project.id];
+        if (boxLayout && pos) {
+          const projectX = boxLayout.x + pos.x;
+          const projectY = boxLayout.y + pos.y;
+          const container = containerRef.current;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            const scale = transformRef.current.scale;
+            transformRef.current.x = rect.width / 2 - projectX * scale;
+            transformRef.current.y = rect.height / 2 - projectY * scale;
+            applyTransform();
+          }
+        }
+      }
+    }
+  }, [selectedProjectId, projects, dynamicLayout, categoryPositions, applyTransform]);
+
   // Cmd+K to focus search bar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -871,7 +902,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                   const colors = getCategoryProjectColors(categoryId);
                   const isHovered = hoveredItem === project.id;
                   const isSelected = selectedItem === project.id;
-                  const isGreyedOut = selectedItem !== null && !isSelected;
+                  const isGreyedOut =
+                    (selectedItem !== null && !isSelected) ||
+                    (highlightedIds != null && !highlightedIds.has(project.id));
                   const displaySize = 80; // Fixed size for all cards
 
                   return (
@@ -885,7 +918,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                           isHovered ? "scale(1.12)" : "scale(1)"
                         }`,
                         zIndex: isSelected ? 20 : isHovered ? 10 : 1,
-                        opacity: isGreyedOut ? 0.3 : 1,
+                        opacity: isGreyedOut ? 0.12 : 1,
                         filter: isGreyedOut ? "grayscale(100%)" : "none",
                       }}
                       onMouseEnter={() => setHoveredItem(project.id)}

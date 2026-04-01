@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from "@/components/ecosystem/Canvas";
 import { MobileProjectList } from "@/components/ecosystem/MobileProjectList";
@@ -36,7 +36,17 @@ import {
   Pencil,
   Lightbulb,
   HelpCircle,
+  User,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
+
+type LeftPanelView =
+  | { type: "most-popular" }
+  | { type: "latest" }
+  | { type: "category"; categoryId: string; categoryName: string }
+  | { type: "legend"; filter: "nsOfficial" | "community" }
+  | null;
 
 const Index = () => {
   const { data: projects = [], isLoading, error } = useProjects();
@@ -44,6 +54,7 @@ const Index = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"canvas" | "list">("canvas");
+  const [profileOpen, setProfileOpen] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<EcosystemProject | null>(null);
   const [editingProject, setEditingProject] = useState<EcosystemProject | null>(
@@ -51,7 +62,21 @@ const Index = () => {
   );
   const [searchOpen, setSearchOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
+  const [leftPanel, setLeftPanel] = useState<LeftPanelView>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
+
+  // Cmd+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchBarRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Find projects the logged-in user owns (NS profile URL match)
   const ownedProjectIds = useMemo(() => {
@@ -135,6 +160,50 @@ const Index = () => {
     });
   }, [projects]);
 
+  // Compute filtered project list for the left panel
+  const leftPanelProjects = useMemo(() => {
+    if (!leftPanel) return [];
+    switch (leftPanel.type) {
+      case "most-popular":
+        // Projects with most NS profile URLs (proxy for activity/team size), top 12
+        return [...projects]
+          .sort((a, b) => (b.nsProfileUrls?.length || 0) - (a.nsProfileUrls?.length || 0))
+          .slice(0, 12);
+      case "latest":
+        return [...projects]
+          .filter((p) => p.addedAt)
+          .sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime())
+          .slice(0, 12);
+      case "category":
+        return projects.filter(
+          (p) => p.category?.toLowerCase() === leftPanel.categoryId.toLowerCase(),
+        );
+      case "legend":
+        if (leftPanel.filter === "nsOfficial") {
+          return projects.filter((p) => p.tags?.includes("nsOfficial"));
+        }
+        return projects.filter((p) => !p.tags?.includes("nsOfficial"));
+      default:
+        return [];
+    }
+  }, [leftPanel, projects]);
+
+  const leftPanelTitle = useMemo(() => {
+    if (!leftPanel) return "";
+    switch (leftPanel.type) {
+      case "most-popular": return "MOST POPULAR";
+      case "latest": return "LATEST TOOLS";
+      case "category": return leftPanel.categoryName.toUpperCase();
+      case "legend": return leftPanel.filter === "nsOfficial" ? "NS OFFICIAL" : "COMMUNITY";
+    }
+  }, [leftPanel]);
+
+  // IDs to highlight on canvas when a left panel filter is active
+  const highlightedIds = useMemo(() => {
+    if (!leftPanel) return null;
+    return new Set(leftPanelProjects.map((p) => p.id));
+  }, [leftPanel, leftPanelProjects]);
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -178,7 +247,7 @@ const Index = () => {
   return (
     <div className="fixed inset-0 overflow-hidden">
       {/* Canvas fills the whole viewport */}
-      <Canvas projects={projects} onSelectProject={setSelectedProject} />
+      <Canvas projects={projects} onSelectProject={setSelectedProject} highlightedIds={highlightedIds} selectedProjectId={selectedProject?.id || null} />
 
       {/* ======= TOP RESOURCE BAR ======= */}
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
@@ -272,6 +341,70 @@ const Index = () => {
                       List View
                     </span>
                   </button>
+                  {user && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setProfileOpen(!profileOpen)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className="text-[10px] uppercase tracking-wider">
+                          Profile
+                        </span>
+                      </button>
+                      {profileOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                          <div className="absolute right-0 top-full mt-1 z-50 w-52 border-2 border-foreground/20 rounded-lg bg-background/95 backdrop-blur-sm overflow-hidden">
+                            <div className="border border-foreground/5 rounded-lg">
+                              <div className="px-3 py-2 border-b border-foreground/10">
+                                <p className="text-xs font-semibold text-foreground truncate">{user.name || user.username}</p>
+                                {user.nsUsername && (
+                                  <p className="text-[10px] text-muted-foreground">@{user.nsUsername}</p>
+                                )}
+                              </div>
+                              {ownedProjectIds.size > 0 && (
+                                <div className="py-1">
+                                  <div className="px-3 py-1">
+                                    <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                                      YOUR PROJECTS
+                                    </span>
+                                  </div>
+                                  {projects
+                                    .filter((p) => ownedProjectIds.has(p.id))
+                                    .map((p) => (
+                                      <button
+                                        key={p.id}
+                                        onClick={() => {
+                                          setEditingProject(editingProject?.id === p.id ? null : p);
+                                          setProfileOpen(false);
+                                        }}
+                                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                                          editingProject?.id === p.id
+                                            ? "bg-foreground/5 text-foreground font-medium"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                        }`}
+                                      >
+                                        <Pencil className="w-3 h-3 shrink-0" />
+                                        <span className="truncate">{p.name}</span>
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                              <div className="border-t border-foreground/10 py-1">
+                                <a
+                                  href="/api/auth/logout"
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                >
+                                  <LogOut className="w-3 h-3" />
+                                  Sign Out
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -279,45 +412,48 @@ const Index = () => {
         </div>
       </div>
 
-      {/* ======= YOUR PROJECTS TAB BAR ======= */}
-      {ownedProjectIds.size > 0 && (
-        <div className="absolute top-[46px] left-0 right-0 z-40 pointer-events-none">
-          <div className="pointer-events-auto">
-            <div className="px-4 py-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-              <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase shrink-0">
-                YOUR PROJECTS
-              </span>
-              <div className="h-3 w-px bg-foreground/15" />
-              {projects
-                .filter((p) => ownedProjectIds.has(p.id))
-                .map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() =>
-                      setEditingProject(editingProject?.id === p.id ? null : p)
-                    }
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors shrink-0 ${
-                      editingProject?.id === p.id
-                        ? "bg-foreground text-background font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    <Pencil className="w-3 h-3" />
-                    {p.name}
-                  </button>
-                ))}
-            </div>
+      {/* ======= EXPLORE TAB BAR ======= */}
+      <div className="absolute top-[46px] left-0 right-0 z-40 pointer-events-none">
+        <div className="pointer-events-auto">
+          <div className="px-4 py-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setLeftPanel(leftPanel?.type === "most-popular" ? null : { type: "most-popular" })}
+              className={`text-[9px] font-bold tracking-[0.15em] uppercase shrink-0 px-2 py-0.5 rounded transition-colors ${
+                leftPanel?.type === "most-popular"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Most Popular
+            </button>
+            <button
+              onClick={() => setLeftPanel(leftPanel?.type === "latest" ? null : { type: "latest" })}
+              className={`text-[9px] font-bold tracking-[0.15em] uppercase shrink-0 px-2 py-0.5 rounded transition-colors ${
+                leftPanel?.type === "latest"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Latest Tools
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ======= LEFT PANEL — Legend ======= */}
       <div
-        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} left-3 z-40 hidden md:block pointer-events-auto`}
+        className="absolute top-[78px] left-3 z-40 hidden md:block pointer-events-auto"
       >
         <Panel title="LEGEND">
           <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-foreground/80">
+            <button
+              onClick={() => setLeftPanel(leftPanel?.type === "legend" && leftPanel.filter === "nsOfficial" ? null : { type: "legend", filter: "nsOfficial" })}
+              className={`flex items-center gap-2 px-2 py-1 text-[11px] rounded transition-colors w-full ${
+                leftPanel?.type === "legend" && leftPanel.filter === "nsOfficial"
+                  ? "bg-foreground/5 text-foreground font-medium"
+                  : "text-foreground/80 hover:bg-muted/50"
+              }`}
+            >
               <svg
                 width="10"
                 height="7"
@@ -331,11 +467,18 @@ const Index = () => {
                 />
               </svg>
               NS Official
-            </div>
-            <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-foreground/80">
+            </button>
+            <button
+              onClick={() => setLeftPanel(leftPanel?.type === "legend" && leftPanel.filter === "community" ? null : { type: "legend", filter: "community" })}
+              className={`flex items-center gap-2 px-2 py-1 text-[11px] rounded transition-colors w-full ${
+                leftPanel?.type === "legend" && leftPanel.filter === "community"
+                  ? "bg-foreground/5 text-foreground font-medium"
+                  : "text-foreground/80 hover:bg-muted/50"
+              }`}
+            >
               <div className="w-[10px]" />
               Community
-            </div>
+            </button>
           </div>
         </Panel>
 
@@ -346,10 +489,20 @@ const Index = () => {
                 const count = projects.filter(
                   (p) => p.category?.toLowerCase() === cat.id.toLowerCase(),
                 ).length;
+                if (count === 0) return null;
                 return (
-                  <div
+                  <button
                     key={cat.id}
-                    className="flex items-center justify-between px-2 py-0.5 text-[11px]"
+                    onClick={() => setLeftPanel(
+                      leftPanel?.type === "category" && leftPanel.categoryId === cat.id
+                        ? null
+                        : { type: "category", categoryId: cat.id, categoryName: cat.name }
+                    )}
+                    className={`flex items-center justify-between px-2 py-0.5 text-[11px] rounded transition-colors w-full ${
+                      leftPanel?.type === "category" && leftPanel.categoryId === cat.id
+                        ? "bg-foreground/5 text-foreground font-medium"
+                        : "hover:bg-muted/50"
+                    }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <div
@@ -361,12 +514,103 @@ const Index = () => {
                     <span className="text-muted-foreground font-mono text-[10px]">
                       {count}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </Panel>
         </div>
+      </div>
+
+      {/* ======= LEFT SLIDE-IN — Filtered Project List ======= */}
+      <div
+        className={`absolute top-[78px] left-3 z-50 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+          leftPanel
+            ? "translate-x-0 opacity-100"
+            : "-translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+      >
+        {leftPanel && (
+          <div className="w-[300px] max-h-[calc(100vh-180px)] flex flex-col">
+            <div className="flex">
+              <div className="bg-background/90 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                  {leftPanelTitle}
+                </span>
+              </div>
+              <div className="flex-1" />
+              <button
+                onClick={() => setLeftPanel(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors px-1.5 pb-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="border-2 border-foreground/20 rounded-tr rounded-b bg-background/90 backdrop-blur-sm overflow-hidden flex flex-col">
+              <div className="border border-foreground/5 rounded-tr rounded-b overflow-y-auto flex-1 scrollbar-hide max-h-[calc(100vh-220px)]">
+                {leftPanelProjects.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                    No projects found.
+                  </div>
+                ) : (
+                  <div className="py-1">
+                    {leftPanelProjects.map((project) => {
+                      const catColor = getCategoryColor(project.category);
+                      return (
+                        <button
+                          key={project.id}
+                          onClick={() => {
+                            setSelectedProject(project);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div
+                            className="w-8 h-8 rounded flex items-center justify-center shrink-0 overflow-hidden"
+                            style={{
+                              color: catColor,
+                              fontSize: project.emoji ? 18 : 10,
+                            }}
+                          >
+                            {project.imageUrl ? (
+                              <img
+                                src={project.imageUrl}
+                                alt={project.name}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              project.emoji ||
+                              project.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-foreground truncate">
+                                {project.name}
+                              </span>
+                              {project.tags?.includes("nsOfficial") && (
+                                <svg width="8" height="6" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                                  <path d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z" fill="currentColor" />
+                                </svg>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {project.description || getCategoryName(project.category)}
+                            </p>
+                          </div>
+                          {leftPanel?.type === "latest" && project.addedAt && (
+                            <span className="text-[9px] text-muted-foreground font-mono shrink-0">
+                              {new Date(project.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ======= RIGHT PANEL — Project Detail ======= */}
