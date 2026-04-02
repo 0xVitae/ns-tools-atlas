@@ -2,8 +2,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { SignJWT, jwtVerify } from 'jose';
 
 function getBaseUrl(req: VercelRequest) {
+  // Use explicit env var if set, otherwise derive from headers
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/$/, '');
+  }
   const proto = req.headers['x-forwarded-proto'] || 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+  // x-forwarded-host can contain multiple comma-separated values; take the first
+  const rawHost = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
+  const host = rawHost.split(',')[0].trim();
   return `${proto}://${host}`;
 }
 
