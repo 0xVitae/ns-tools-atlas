@@ -250,7 +250,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           window.innerWidth < 768 ||
           "ontouchstart" in window ||
           navigator.maxTouchPoints > 0;
-        const scale = isMobile ? 0.5 : 1;
+        const scale = isMobile ? 0.5 : 0.85;
         const x = (window.innerWidth - canvasWidth * scale) / 2;
         const y = (window.innerHeight - canvasHeight * scale) / 2;
         transformRef.current = { x, y, scale };
@@ -728,7 +728,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       window.innerWidth < 768 ||
       "ontouchstart" in window ||
       navigator.maxTouchPoints > 0;
-    const scale = isMobile ? 0.5 : 1;
+    const scale = isMobile ? 0.5 : 0.85;
     const x = (window.innerWidth - canvasWidth * scale) / 2;
     const y = (window.innerHeight - canvasHeight * scale) / 2;
     transformRef.current = { x, y, scale };
