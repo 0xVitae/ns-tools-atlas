@@ -44,7 +44,8 @@ import {
   LayoutGrid,
   Globe,
 } from "lucide-react";
-const MapView = lazy(() => import("@/components/ecosystem/MapView"));
+const mapViewImport = () => import("@/components/ecosystem/MapView");
+const MapView = lazy(mapViewImport);
 
 type LeftPanelView =
   | { type: "most-popular" }
@@ -72,6 +73,9 @@ const Index = () => {
   const [faqOpen, setFaqOpen] = useState(false);
   const [leftPanel, setLeftPanel] = useState<LeftPanelView>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
+
+  // Preload MapView chunk so switching to map is instant
+  useEffect(() => { mapViewImport(); }, []);
 
   // Cmd+K to open search
   useEffect(() => {

@@ -144,21 +144,12 @@ export default function MapView({ projects, onSelectProject }: MapViewProps) {
             }
           }
 
-          // Preload tiles around NS HQ while map is hidden behind overlay
-          const preloadZooms = [6, 10, 15];
-          let i = 0;
-          const preloadNext = () => {
-            if (i >= preloadZooms.length) {
-              // Done — restore view and reveal
-              map.jumpTo({ center: [80, 20], zoom: 1.8 });
-              map.once("idle", () => setPreloading(false));
-              return;
-            }
-            const z = preloadZooms[i++];
-            map.jumpTo({ center: [NS_LON, NS_LAT], zoom: z });
-            map.once("idle", preloadNext);
-          };
-          map.once("idle", preloadNext);
+          // Preload tiles at NS HQ final zoom so clicking NS node is instant
+          map.jumpTo({ center: [NS_LON, NS_LAT], zoom: 15 });
+          map.once("idle", () => {
+            map.jumpTo({ center: [80, 20], zoom: 1.8 });
+            map.once("idle", () => setPreloading(false));
+          });
         }}
       >
         <NavigationControl position="bottom-right" showCompass={false} />
