@@ -263,8 +263,38 @@ const Index = () => {
         <Canvas projects={projects} onSelectProject={setSelectedProject} highlightedIds={highlightedIds} selectedProjectId={selectedProject?.id || null} />
       )}
 
-      {/* ======= TOP RESOURCE BAR ======= */}
+      {/* ======= ANNOUNCEMENT CHYRON ======= */}
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto bg-black overflow-hidden" style={{ height: 24 }}>
+          <div className="flex items-center h-full animate-marquee whitespace-nowrap">
+            {(() => {
+              const latestProjects = projects
+                .filter((p) => p.addedAt)
+                .sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime())
+                .slice(0, 2);
+              const featureItems: { emoji: string; text: string; action: () => void }[] = [
+                { emoji: "", text: "NEW FEATURES: 🗺️ Map View — explore the NS ecosystem geographically , 🔍 Cmd+K search — find any project instantly", action: () => { setViewMode("map"); window.location.hash = "#map"; } },
+              ];
+              const newProjectsItem = latestProjects.length > 0 ? [{
+                emoji: "",
+                text: `NEW PROJECTS: ${latestProjects.map((p) => `${p.emoji || "•"} ${p.name}`).join(" , ")}`,
+                action: () => setSelectedProject(latestProjects[0]),
+              }] : [];
+              const items = [...featureItems, ...newProjectsItem];
+              const all = [...items, ...items];
+              return all.map((item, i) => (
+                <button key={i} onClick={item.action} className="flex items-center text-[10px] font-mono tracking-wider text-white uppercase mx-6 shrink-0 hover:text-white/70 transition-colors cursor-pointer">
+                  <span className="mr-2 text-xs not-italic" style={{ fontFamily: "system-ui" }}>{item.emoji}</span>
+                  {item.text}
+                </button>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* ======= TOP RESOURCE BAR ======= */}
+      <div className="absolute top-[24px] left-0 right-0 z-50 pointer-events-none">
         <div className="pointer-events-auto">
           <div className="border-b-2 border-foreground/20">
             <div className="bg-background/90 backdrop-blur-sm border-b border-foreground/10 px-4 py-1.5">
@@ -459,7 +489,7 @@ const Index = () => {
       </div>
 
       {/* ======= EXPLORE TAB BAR ======= */}
-      <div className="absolute top-[46px] left-0 right-0 z-40 pointer-events-none">
+      <div className="absolute top-[70px] left-0 right-0 z-40 pointer-events-none">
         <div className="pointer-events-auto">
           <div className="px-4 py-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
             <button
@@ -488,7 +518,7 @@ const Index = () => {
 
       {/* ======= LEFT PANEL — Legend ======= */}
       <div
-        className="absolute top-[78px] left-3 z-40 hidden md:block pointer-events-auto"
+        className="absolute top-[102px] left-3 z-40 hidden md:block pointer-events-auto"
       >
         <Panel title="LEGEND">
           <div className="flex flex-col gap-0.5">
@@ -570,7 +600,7 @@ const Index = () => {
 
       {/* ======= LEFT SLIDE-IN — Filtered Project List ======= */}
       <div
-        className={`absolute top-[78px] left-3 z-50 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+        className={`absolute top-[102px] left-3 z-50 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
           leftPanel
             ? "translate-x-0 opacity-100"
             : "-translate-x-[120%] opacity-0 pointer-events-none"
@@ -661,7 +691,7 @@ const Index = () => {
 
       {/* ======= RIGHT PANEL — Project Detail ======= */}
       <div
-        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-[60] hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[102px]" : "top-14"} right-0 z-[60] hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
           selectedProject && !editingProject
             ? "translate-x-0 opacity-100"
             : "translate-x-full opacity-0 pointer-events-none"
@@ -677,7 +707,7 @@ const Index = () => {
 
       {/* ======= RIGHT PANEL — Edit Project ======= */}
       <div
-        className={`absolute ${ownedProjectIds.size > 0 ? "top-[78px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[102px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
           editingProject
             ? "translate-x-0 opacity-100"
             : "translate-x-full opacity-0 pointer-events-none"
@@ -1099,55 +1129,40 @@ function ProjectDetailPanel({
               </DetailSection>
             )}
 
-            {/* Status & Info */}
-            <DetailSection label="STATUS">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-foreground/70">
-                    {project.status === "dead" ? "Inactive" : "Active"}
-                  </span>
+            {/* Status / Released / Location */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Status</span>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <div className={`w-1.5 h-1.5 rounded-full ${project.status === "dead" ? "bg-red-500" : "bg-emerald-500"}`} />
+                  <span className="text-foreground/80">{project.status === "dead" ? "Inactive" : "Active"}</span>
                 </div>
-                {project.addedAt && (
-                  <div className="flex items-center gap-1.5 text-xs text-foreground/70">
-                    <Calendar className="w-3 h-3" />
-                    Release Date:{" "}
+              </div>
+              {project.addedAt && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Released</span>
+                  <span className="text-xs text-foreground/80">
                     {new Date(project.addedAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
-                  </div>
-                )}
-              </div>
-            </DetailSection>
-
-            {/* Location */}
-            {project.locations && project.locations.length > 0 && (
-              <DetailSection label="LOCATION">
-                <div className="flex flex-col gap-1.5">
-                  {project.locations.map((loc, idx) => {
-                    const [lat, lon] = loc.split(",").map(Number);
-                    const isNS = Math.abs(lat - 1.3356) < 0.02 && Math.abs(lon - 103.5943) < 0.02;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/30 border border-foreground/5 text-xs"
-                      >
-                        <span className="text-foreground/70">
-                          {isNS ? "Forest City, Malaysia" : `${lat.toFixed(2)}, ${lon.toFixed(2)}`}
-                        </span>
-                        {isNS && (
-                          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground font-mono uppercase tracking-wider">
-                            NS HQ
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                  </span>
                 </div>
-              </DetailSection>
-            )}
+              )}
+              {project.locations && project.locations.length > 0 && (() => {
+                const [lat, lon] = project.locations[0].split(",").map(Number);
+                const isNS = Math.abs(lat - 1.3356) < 0.02 && Math.abs(lon - 103.5943) < 0.02;
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Location</span>
+                    <span className="text-xs text-foreground/80">
+                      {isNS ? "Forest City, MY" : `${lat.toFixed(2)}, ${lon.toFixed(2)}`}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* Links */}
             {(project.url || project.guideUrl) && (
