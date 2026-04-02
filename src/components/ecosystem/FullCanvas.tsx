@@ -15,8 +15,6 @@ import {
 import {
   ExternalLink,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   List,
   ListFilter,
@@ -67,26 +65,15 @@ const ProductImageCarousel: React.FC<{
 }> = ({ images, projectName }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const goToPrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
-
-  const goToNext = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
 
   return (
-    <div className="relative pt-2">
+    <div className="pt-2 space-y-2">
       {/* Main Image */}
-      <div className="rounded-lg overflow-hidden border border-border/50 bg-muted/20">
+      <div className="rounded-lg overflow-hidden border border-border/50 bg-muted/20 aspect-[4/3]">
         <img
           src={images[currentIndex]}
           alt={`${projectName} screenshot ${currentIndex + 1}`}
-          className="w-full h-auto object-contain"
+          className="w-full h-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
               "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='60' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21,15 16,10 5,21'/%3E%3C/svg%3E";
@@ -94,42 +81,31 @@ const ProductImageCarousel: React.FC<{
         />
       </div>
 
-      {/* Navigation - only show if more than 1 image */}
+      {/* Thumbnail Gallery */}
       {images.length > 1 && (
-        <>
-          {/* Prev/Next Buttons */}
-          <button
-            onClick={goToPrev}
-            className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/90 border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={goToNext}
-            className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/90 border border-border/50 flex items-center justify-center hover:bg-background transition-colors shadow-sm"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          {/* Dots Indicator */}
-          <div className="flex items-center justify-center gap-1.5 pt-2">
-            {images.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setCurrentIndex(idx);
-                }}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  idx === currentIndex
-                    ? "bg-primary"
-                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                }`}
+        <div className="flex gap-1.5">
+          {images.map((img, idx) => (
+            <button
+              key={idx}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setCurrentIndex(idx);
+              }}
+              className={`relative flex-1 aspect-square rounded overflow-hidden border-2 transition-all ${
+                idx === currentIndex
+                  ? "border-primary ring-1 ring-primary/30"
+                  : "border-border/40 opacity-60 hover:opacity-100"
+              }`}
+            >
+              <img
+                src={img}
+                alt={`${projectName} thumbnail ${idx + 1}`}
+                className="w-full h-full object-cover"
               />
-            ))}
-          </div>
-        </>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -556,32 +532,13 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       const project = projects.find((p) => p.id === action.id);
       if (!project) return;
 
-      const boxLayout = dynamicLayout[project.category];
-      const pos = categoryPositions[project.category]?.[project.id];
-      if (!boxLayout || !pos) return;
-
-      // Calculate the absolute position of the project on the canvas
-      const projectX = boxLayout.x + pos.x;
-      const projectY = boxLayout.y + pos.y;
-
-      // Pan to center the project on screen
-      const container = containerRef.current;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const scale = transformRef.current.scale;
-
-      transformRef.current.x = rect.width / 2 - projectX * scale;
-      transformRef.current.y = rect.height / 2 - projectY * scale;
-      applyTransform();
-
       // Set the selected item to highlight it and grey out others, and update URL hash
       const slug = generateProjectSlug(project.name);
       history.replaceState(null, "", `#${slug}`);
       setSelectedItem(project.id);
       setHoveredItem(project.id);
     },
-    [projects, dynamicLayout, categoryPositions, applyTransform],
+    [projects],
   );
 
   // Clear selection when clicking on canvas background
@@ -711,8 +668,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         if (project) {
           const slug = generateProjectSlug(project.name);
           history.replaceState(null, "", `#${slug}`);
-          // Ensure hover card will be visible
-          ensureHoverCardVisible(project);
         }
       } else {
         history.replaceState(
@@ -722,7 +677,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         );
       }
     },
-    [projects, ensureHoverCardVisible],
+    [projects],
   );
 
   // Find project by URL hash slug
@@ -740,23 +695,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       if (hash) {
         const project = findProjectBySlug(hash);
         if (project) {
-          // Find position and pan to project
-          const boxLayout = dynamicLayout[project.category];
-          const pos = categoryPositions[project.category]?.[project.id];
-          if (boxLayout && pos) {
-            const projectX = boxLayout.x + pos.x;
-            const projectY = boxLayout.y + pos.y;
-
-            const container = containerRef.current;
-            if (container) {
-              const rect = container.getBoundingClientRect();
-              const scale = transformRef.current.scale;
-
-              transformRef.current.x = rect.width / 2 - projectX * scale;
-              transformRef.current.y = rect.height / 2 - projectY * scale;
-              applyTransform();
-            }
-          }
           setSelectedItem(project.id);
           setHoveredItem(project.id);
         }
@@ -769,7 +707,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     // Listen for hash changes (browser back/forward)
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [findProjectBySlug, dynamicLayout, categoryPositions, applyTransform]);
+  }, [findProjectBySlug]);
 
   // Pan handlers - use refs and requestAnimationFrame for smooth performance
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

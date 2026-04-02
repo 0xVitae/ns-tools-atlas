@@ -1,4 +1,12 @@
-import { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from "react";
+import {
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+  lazy,
+  Suspense,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from "@/components/ecosystem/Canvas";
 import { MobileProjectList } from "@/components/ecosystem/MobileProjectList";
@@ -60,7 +68,11 @@ const Index = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"canvas" | "list" | "map">(() =>
-    window.location.hash === "#list" ? "list" : window.location.hash === "#map" ? "map" : "canvas"
+    window.location.hash === "#list"
+      ? "list"
+      : window.location.hash === "#map"
+        ? "map"
+        : "canvas",
   );
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -75,7 +87,9 @@ const Index = () => {
   const searchBarRef = useRef<ActionSearchBarRef>(null);
 
   // Preload MapView chunk so switching to map is instant
-  useEffect(() => { mapViewImport(); }, []);
+  useEffect(() => {
+    mapViewImport();
+  }, []);
 
   // Cmd+K to open search
   useEffect(() => {
@@ -179,16 +193,23 @@ const Index = () => {
       case "most-popular":
         // Projects with most NS profile URLs (proxy for activity/team size), top 12
         return [...projects]
-          .sort((a, b) => (b.nsProfileUrls?.length || 0) - (a.nsProfileUrls?.length || 0))
+          .sort(
+            (a, b) =>
+              (b.nsProfileUrls?.length || 0) - (a.nsProfileUrls?.length || 0),
+          )
           .slice(0, 12);
       case "latest":
         return [...projects]
           .filter((p) => p.addedAt)
-          .sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime(),
+          )
           .slice(0, 12);
       case "category":
         return projects.filter(
-          (p) => p.category?.toLowerCase() === leftPanel.categoryId.toLowerCase(),
+          (p) =>
+            p.category?.toLowerCase() === leftPanel.categoryId.toLowerCase(),
         );
       case "legend":
         if (leftPanel.filter === "nsOfficial") {
@@ -203,10 +224,14 @@ const Index = () => {
   const leftPanelTitle = useMemo(() => {
     if (!leftPanel) return "";
     switch (leftPanel.type) {
-      case "most-popular": return "MOST POPULAR";
-      case "latest": return "LATEST TOOLS";
-      case "category": return leftPanel.categoryName.toUpperCase();
-      case "legend": return leftPanel.filter === "nsOfficial" ? "NS OFFICIAL" : "COMMUNITY";
+      case "most-popular":
+        return "MOST POPULAR";
+      case "latest":
+        return "LATEST TOOLS";
+      case "category":
+        return leftPanel.categoryName.toUpperCase();
+      case "legend":
+        return leftPanel.filter === "nsOfficial" ? "NS OFFICIAL" : "COMMUNITY";
     }
   }, [leftPanel]);
 
@@ -257,38 +282,77 @@ const Index = () => {
   }
 
   return (
-    <div className={`fixed inset-0 overflow-hidden ${viewMode === "map" ? "dark" : ""}`}>
+    <div
+      className={`fixed inset-0 overflow-hidden ${viewMode === "map" ? "dark" : ""}`}
+    >
       {/* Main view fills the whole viewport */}
       {viewMode === "map" ? (
         <Suspense fallback={<div className="fixed inset-0 bg-[#0a0a0f]" />}>
           <MapView projects={projects} onSelectProject={setSelectedProject} />
         </Suspense>
       ) : (
-        <Canvas projects={projects} onSelectProject={setSelectedProject} highlightedIds={highlightedIds} selectedProjectId={selectedProject?.id || null} />
+        <Canvas
+          projects={projects}
+          onSelectProject={setSelectedProject}
+          highlightedIds={highlightedIds}
+          selectedProjectId={selectedProject?.id || null}
+        />
       )}
 
       {/* ======= ANNOUNCEMENT CHYRON ======= */}
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
-        <div className="pointer-events-auto bg-black overflow-hidden" style={{ height: 24 }}>
+        <div
+          className="pointer-events-auto bg-black overflow-hidden"
+          style={{ height: 24 }}
+        >
           <div className="flex items-center h-full animate-marquee whitespace-nowrap">
             {(() => {
               const latestProjects = projects
                 .filter((p) => p.addedAt)
-                .sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.addedAt!).getTime() -
+                    new Date(a.addedAt!).getTime(),
+                )
                 .slice(0, 2);
-              const featureItems: { emoji: string; text: string; action: () => void }[] = [
-                { emoji: "", text: "NEW FEATURES: 🗺️ Map View — explore the NS ecosystem geographically , 🔍 Cmd+K search — find any project instantly", action: () => { setViewMode("map"); window.location.hash = "#map"; } },
+              const featureItems: {
+                emoji: string;
+                text: string;
+                action: () => void;
+              }[] = [
+                {
+                  emoji: "",
+                  text: "NEW FEATURES: 🗺️ Map View — explore the NS ecosystem geographically , 🔍 Cmd+K search — find any project instantly",
+                  action: () => {
+                    setViewMode("map");
+                    window.location.hash = "#map";
+                  },
+                },
               ];
-              const newProjectsItem = latestProjects.length > 0 ? [{
-                emoji: "",
-                text: `NEW PROJECTS: ${latestProjects.map((p) => `${p.emoji || "•"} ${p.name}`).join(" , ")}`,
-                action: () => setSelectedProject(latestProjects[0]),
-              }] : [];
+              const newProjectsItem =
+                latestProjects.length > 0
+                  ? [
+                      {
+                        emoji: "",
+                        text: `NEW PROJECTS: ${latestProjects.map((p) => `${p.emoji || "•"} ${p.name}`).join(" , ")}`,
+                        action: () => setSelectedProject(latestProjects[0]),
+                      },
+                    ]
+                  : [];
               const items = [...featureItems, ...newProjectsItem];
               const all = [...items, ...items];
               return all.map((item, i) => (
-                <button key={i} onClick={item.action} className="flex items-center text-[10px] font-mono tracking-wider text-white uppercase mx-6 shrink-0 hover:text-white/70 transition-colors cursor-pointer">
-                  <span className="mr-2 text-xs not-italic" style={{ fontFamily: "system-ui" }}>{item.emoji}</span>
+                <button
+                  key={i}
+                  onClick={item.action}
+                  className="flex items-center text-[10px] font-mono tracking-wider text-white uppercase mx-6 shrink-0 hover:text-white/70 transition-colors cursor-pointer"
+                >
+                  <span
+                    className="mr-2 text-xs not-italic"
+                    style={{ fontFamily: "system-ui" }}
+                  >
+                    {item.emoji}
+                  </span>
                   {item.text}
                 </button>
               ));
@@ -392,20 +456,36 @@ const Index = () => {
                     </button>
                     {viewDropdownOpen && (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setViewDropdownOpen(false)} />
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setViewDropdownOpen(false)}
+                        />
                         <div className="absolute right-0 top-full mt-1 z-50 w-36 border-2 border-foreground/20 rounded-lg bg-background/95 backdrop-blur-sm overflow-hidden shadow-lg">
-                          {([
-                            { id: "canvas" as const, label: "Canvas", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-                            { id: "list" as const, label: "List", icon: <List className="w-3.5 h-3.5" /> },
-                            { id: "map" as const, label: "Map", icon: <Globe className="w-3.5 h-3.5" /> },
-                          ]).map((v) => (
+                          {[
+                            {
+                              id: "canvas" as const,
+                              label: "Canvas",
+                              icon: <LayoutGrid className="w-3.5 h-3.5" />,
+                            },
+                            {
+                              id: "list" as const,
+                              label: "List",
+                              icon: <List className="w-3.5 h-3.5" />,
+                            },
+                            {
+                              id: "map" as const,
+                              label: "Map",
+                              icon: <Globe className="w-3.5 h-3.5" />,
+                            },
+                          ].map((v) => (
                             <button
                               key={v.id}
                               disabled={viewMode === v.id}
                               onClick={() => {
                                 setViewMode(v.id);
                                 setViewDropdownOpen(false);
-                                window.location.hash = v.id === "canvas" ? "" : `#${v.id}`;
+                                window.location.hash =
+                                  v.id === "canvas" ? "" : `#${v.id}`;
                               }}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
                                 viewMode === v.id
@@ -414,7 +494,9 @@ const Index = () => {
                               }`}
                             >
                               {v.icon}
-                              <span className="text-[10px] font-bold uppercase tracking-wider">{v.label}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider">
+                                {v.label}
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -433,13 +515,20 @@ const Index = () => {
                       </button>
                       {profileOpen && (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setProfileOpen(false)}
+                          />
                           <div className="absolute right-0 top-full mt-1 z-50 w-52 border-2 border-foreground/20 rounded-lg bg-background/95 backdrop-blur-sm overflow-hidden">
                             <div className="border border-foreground/5 rounded-lg">
                               <div className="px-3 py-2 border-b border-foreground/10">
-                                <p className="text-xs font-semibold text-foreground truncate">{user.name || user.username}</p>
+                                <p className="text-xs font-semibold text-foreground truncate">
+                                  {user.name || user.username}
+                                </p>
                                 {user.nsUsername && (
-                                  <p className="text-[10px] text-muted-foreground">@{user.nsUsername}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    @{user.nsUsername}
+                                  </p>
                                 )}
                               </div>
                               {ownedProjectIds.size > 0 && (
@@ -455,7 +544,11 @@ const Index = () => {
                                       <button
                                         key={p.id}
                                         onClick={() => {
-                                          setEditingProject(editingProject?.id === p.id ? null : p);
+                                          setEditingProject(
+                                            editingProject?.id === p.id
+                                              ? null
+                                              : p,
+                                          );
                                           setProfileOpen(false);
                                         }}
                                         className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
@@ -465,7 +558,9 @@ const Index = () => {
                                         }`}
                                       >
                                         <Pencil className="w-3 h-3 shrink-0" />
-                                        <span className="truncate">{p.name}</span>
+                                        <span className="truncate">
+                                          {p.name}
+                                        </span>
                                       </button>
                                     ))}
                                 </div>
@@ -497,7 +592,13 @@ const Index = () => {
         <div className="pointer-events-auto">
           <div className="px-4 py-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
             <button
-              onClick={() => setLeftPanel(leftPanel?.type === "most-popular" ? null : { type: "most-popular" })}
+              onClick={() =>
+                setLeftPanel(
+                  leftPanel?.type === "most-popular"
+                    ? null
+                    : { type: "most-popular" },
+                )
+              }
               className={`text-[9px] font-bold tracking-[0.15em] uppercase shrink-0 px-2 py-0.5 rounded transition-colors ${
                 leftPanel?.type === "most-popular"
                   ? "bg-foreground text-background"
@@ -507,7 +608,11 @@ const Index = () => {
               Most Popular
             </button>
             <button
-              onClick={() => setLeftPanel(leftPanel?.type === "latest" ? null : { type: "latest" })}
+              onClick={() =>
+                setLeftPanel(
+                  leftPanel?.type === "latest" ? null : { type: "latest" },
+                )
+              }
               className={`text-[9px] font-bold tracking-[0.15em] uppercase shrink-0 px-2 py-0.5 rounded transition-colors ${
                 leftPanel?.type === "latest"
                   ? "bg-foreground text-background"
@@ -521,15 +626,21 @@ const Index = () => {
       </div>
 
       {/* ======= LEFT PANEL — Legend ======= */}
-      <div
-        className="absolute top-[102px] left-3 z-40 hidden md:block pointer-events-auto"
-      >
+      <div className="absolute top-[102px] left-3 z-40 hidden md:block pointer-events-auto">
         <Panel title="LEGEND">
           <div className="flex flex-col gap-0.5">
             <button
-              onClick={() => setLeftPanel(leftPanel?.type === "legend" && leftPanel.filter === "nsOfficial" ? null : { type: "legend", filter: "nsOfficial" })}
+              onClick={() =>
+                setLeftPanel(
+                  leftPanel?.type === "legend" &&
+                    leftPanel.filter === "nsOfficial"
+                    ? null
+                    : { type: "legend", filter: "nsOfficial" },
+                )
+              }
               className={`flex items-center gap-2 px-2 py-1 text-[11px] rounded transition-colors w-full ${
-                leftPanel?.type === "legend" && leftPanel.filter === "nsOfficial"
+                leftPanel?.type === "legend" &&
+                leftPanel.filter === "nsOfficial"
                   ? "bg-foreground/5 text-foreground font-medium"
                   : "text-foreground/80 hover:bg-muted/50"
               }`}
@@ -549,7 +660,14 @@ const Index = () => {
               NS Official
             </button>
             <button
-              onClick={() => setLeftPanel(leftPanel?.type === "legend" && leftPanel.filter === "community" ? null : { type: "legend", filter: "community" })}
+              onClick={() =>
+                setLeftPanel(
+                  leftPanel?.type === "legend" &&
+                    leftPanel.filter === "community"
+                    ? null
+                    : { type: "legend", filter: "community" },
+                )
+              }
               className={`flex items-center gap-2 px-2 py-1 text-[11px] rounded transition-colors w-full ${
                 leftPanel?.type === "legend" && leftPanel.filter === "community"
                   ? "bg-foreground/5 text-foreground font-medium"
@@ -573,13 +691,21 @@ const Index = () => {
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setLeftPanel(
-                      leftPanel?.type === "category" && leftPanel.categoryId === cat.id
-                        ? null
-                        : { type: "category", categoryId: cat.id, categoryName: cat.name }
-                    )}
+                    onClick={() =>
+                      setLeftPanel(
+                        leftPanel?.type === "category" &&
+                          leftPanel.categoryId === cat.id
+                          ? null
+                          : {
+                              type: "category",
+                              categoryId: cat.id,
+                              categoryName: cat.name,
+                            },
+                      )
+                    }
                     className={`flex items-center justify-between px-2 py-0.5 text-[11px] rounded transition-colors w-full ${
-                      leftPanel?.type === "category" && leftPanel.categoryId === cat.id
+                      leftPanel?.type === "category" &&
+                      leftPanel.categoryId === cat.id
                         ? "bg-foreground/5 text-foreground font-medium"
                         : "hover:bg-muted/50"
                     }`}
@@ -659,7 +785,12 @@ const Index = () => {
                               />
                             ) : (
                               project.emoji ||
-                              project.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+                              project.name
+                                .split(" ")
+                                .map((w) => w[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -668,18 +799,32 @@ const Index = () => {
                                 {project.name}
                               </span>
                               {project.tags?.includes("nsOfficial") && (
-                                <svg width="8" height="6" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                                  <path d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z" fill="currentColor" />
+                                <svg
+                                  width="8"
+                                  height="6"
+                                  viewBox="0 0 30 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="shrink-0"
+                                >
+                                  <path
+                                    d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+                                    fill="currentColor"
+                                  />
                                 </svg>
                               )}
                             </div>
                             <p className="text-[10px] text-muted-foreground truncate">
-                              {project.description || getCategoryName(project.category)}
+                              {project.description ||
+                                getCategoryName(project.category)}
                             </p>
                           </div>
                           {leftPanel?.type === "latest" && project.addedAt && (
                             <span className="text-[9px] text-muted-foreground font-mono shrink-0">
-                              {new Date(project.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              {new Date(project.addedAt).toLocaleDateString(
+                                "en-US",
+                                { month: "short", day: "numeric" },
+                              )}
                             </span>
                           )}
                         </button>
@@ -711,7 +856,7 @@ const Index = () => {
 
       {/* ======= RIGHT PANEL — Edit Project ======= */}
       <div
-        className={`absolute ${ownedProjectIds.size > 0 ? "top-[102px]" : "top-14"} right-0 z-40 hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[102px]" : "top-14"} right-0 z-[60] hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
           editingProject
             ? "translate-x-0 opacity-100"
             : "translate-x-full opacity-0 pointer-events-none"
@@ -837,7 +982,7 @@ const Index = () => {
             className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-foreground/20 bg-background/90 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 hover:bg-muted/50 transition-all shadow-lg"
           >
             <span className="text-[10px] font-bold tracking-wider uppercase">
-              Request
+              Request Tool
             </span>
             <Lightbulb className="w-5 h-5" />
           </button>
@@ -1077,56 +1222,36 @@ function ProjectDetailPanel({
             {/* Product Images */}
             {project.productImages && project.productImages.length > 0 && (
               <DetailSection label="MEDIA">
-                <div className="relative">
-                  <div className="rounded-lg overflow-hidden border border-foreground/10 bg-muted/20">
+                <div className="space-y-2">
+                  <div className="rounded-lg overflow-hidden border border-foreground/10 bg-muted/20 aspect-[4/3]">
                     <img
                       src={project.productImages[imageIndex]}
                       alt={`${project.name} screenshot ${imageIndex + 1}`}
-                      className="w-full h-auto object-contain"
+                      className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
                     />
                   </div>
                   {project.productImages.length > 1 && (
-                    <div className="flex items-center justify-between mt-2">
-                      <button
-                        onClick={() =>
-                          setImageIndex((prev) =>
-                            prev === 0
-                              ? project.productImages!.length - 1
-                              : prev - 1,
-                          )
-                        }
-                        className="w-6 h-6 rounded border border-foreground/15 flex items-center justify-center hover:bg-muted/50 transition-colors"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="flex items-center gap-1.5">
-                        {project.productImages.map((_, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setImageIndex(idx)}
-                            className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                              idx === imageIndex
-                                ? "bg-foreground"
-                                : "bg-foreground/20"
-                            }`}
+                    <div className="flex gap-1.5">
+                      {project.productImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setImageIndex(idx)}
+                          className={`relative flex-1 aspect-square rounded overflow-hidden border-2 transition-all ${
+                            idx === imageIndex
+                              ? "border-foreground ring-1 ring-foreground/20"
+                              : "border-foreground/10 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={`${project.name} thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
                           />
-                        ))}
-                      </div>
-                      <button
-                        onClick={() =>
-                          setImageIndex((prev) =>
-                            prev === project.productImages!.length - 1
-                              ? 0
-                              : prev + 1,
-                          )
-                        }
-                        className="w-6 h-6 rounded border border-foreground/15 flex items-center justify-center hover:bg-muted/50 transition-colors"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1136,15 +1261,23 @@ function ProjectDetailPanel({
             {/* Status / Released / Location */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Status</span>
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                  Status
+                </span>
                 <div className="flex items-center gap-1.5 text-xs">
-                  <div className={`w-1.5 h-1.5 rounded-full ${project.status === "dead" ? "bg-red-500" : "bg-emerald-500"}`} />
-                  <span className="text-foreground/80">{project.status === "dead" ? "Inactive" : "Active"}</span>
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${project.status === "dead" ? "bg-red-500" : "bg-emerald-500"}`}
+                  />
+                  <span className="text-foreground/80">
+                    {project.status === "dead" ? "Inactive" : "Active"}
+                  </span>
                 </div>
               </div>
               {project.addedAt && (
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Released</span>
+                  <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                    Released
+                  </span>
                   <span className="text-xs text-foreground/80">
                     {new Date(project.addedAt).toLocaleDateString("en-US", {
                       month: "short",
@@ -1154,18 +1287,28 @@ function ProjectDetailPanel({
                   </span>
                 </div>
               )}
-              {project.locations && project.locations.length > 0 && (() => {
-                const [lat, lon] = project.locations[0].split(",").map(Number);
-                const isNS = Math.abs(lat - 1.3356) < 0.02 && Math.abs(lon - 103.5943) < 0.02;
-                return (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">Location</span>
-                    <span className="text-xs text-foreground/80">
-                      {isNS ? "Forest City, MY" : `${lat.toFixed(2)}, ${lon.toFixed(2)}`}
-                    </span>
-                  </div>
-                );
-              })()}
+              {project.locations &&
+                project.locations.length > 0 &&
+                (() => {
+                  const [lat, lon] = project.locations[0]
+                    .split(",")
+                    .map(Number);
+                  const isNS =
+                    Math.abs(lat - 1.3356) < 0.02 &&
+                    Math.abs(lon - 103.5943) < 0.02;
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                        Location
+                      </span>
+                      <span className="text-xs text-foreground/80">
+                        {isNS
+                          ? "Forest City, MY"
+                          : `${lat.toFixed(2)}, ${lon.toFixed(2)}`}
+                      </span>
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* Links */}

@@ -9,13 +9,11 @@ import {
 import {
   Plus,
   X,
-  ImageIcon,
   Smile,
   Sparkles,
-  Images,
   ExternalLink,
-  Check,
 } from "lucide-react";
+import { ImageDropZone } from "@/components/ui/ImageDropZone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +43,10 @@ interface AddProjectFormProps {
   /** When provided, the form operates in edit mode with pre-filled values */
   editProject?: EcosystemProject;
   /** Called on save in edit mode */
-  onSaveEdit?: (projectId: string, updates: Record<string, unknown>) => Promise<void>;
+  onSaveEdit?: (
+    projectId: string,
+    updates: Record<string, unknown>,
+  ) => Promise<void>;
   /** When true, renders just the form content without popover/drawer wrapper */
   renderFormOnly?: boolean;
 }
@@ -65,21 +66,36 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState(editingProject?.name || "");
-  const [formCategory, setFormCategory] = useState<string>(editingProject?.category || "");
-  const [formDescription, setFormDescription] = useState(editingProject?.description || "");
+  const [formCategory, setFormCategory] = useState<string>(
+    editingProject?.category || "",
+  );
+  const [formDescription, setFormDescription] = useState(
+    editingProject?.description || "",
+  );
   const [formUrl, setFormUrl] = useState(editingProject?.url || "");
-  const [formGuideUrl, setFormGuideUrl] = useState(editingProject?.guideUrl || "");
-  const [showGuideUrlInput, setShowGuideUrlInput] = useState(!!editingProject?.guideUrl);
-  const [formImageUrl, setFormImageUrl] = useState(editingProject?.imageUrl || "");
-  const [formEmoji, setFormEmoji] = useState<string | null>(editingProject?.emoji || null);
+  const [formGuideUrl, setFormGuideUrl] = useState(
+    editingProject?.guideUrl || "",
+  );
+  const [showGuideUrlInput, setShowGuideUrlInput] = useState(
+    !!editingProject?.guideUrl,
+  );
+  const [formImageUrl, setFormImageUrl] = useState(
+    editingProject?.imageUrl || "",
+  );
+  const [formEmoji, setFormEmoji] = useState<string | null>(
+    editingProject?.emoji || null,
+  );
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Product images gallery state (max 3)
-  const [formProductImages, setFormProductImages] = useState<string[]>(editingProject?.productImages || []);
-  const [newProductImageUrl, setNewProductImageUrl] = useState("");
+  const [formProductImages, setFormProductImages] = useState<string[]>(
+    editingProject?.productImages || [],
+  );
 
   // NS Profile URLs state (max 3)
-  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>(editingProject?.nsProfileUrls || []);
+  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>(
+    editingProject?.nsProfileUrls || [],
+  );
   const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
   const [showNsProfileInput, setShowNsProfileInput] = useState(false);
 
@@ -88,12 +104,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
   const MAX_PRODUCT_IMAGES = 3;
-
-  // Image validation state
-  const [logoImageValid, setLogoImageValid] = useState<boolean | null>(null);
-  const [productImagesValid, setProductImagesValid] = useState<
-    Record<number, boolean>
-  >({});
 
   // URL validation helper
   const isValidUrl = (url: string): boolean => {
@@ -109,20 +119,12 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // Validation states for URLs
   const isWebsiteUrlValid = isValidUrl(formUrl);
   const isGuideUrlValid = !formGuideUrl.trim() || isValidUrl(formGuideUrl);
-  const isLogoUrlValid =
-    !formImageUrl.trim() ||
-    (isValidUrl(formImageUrl) && logoImageValid !== false);
-
-  // Check all product images are valid
-  const allProductImagesValid =
-    formProductImages.length === 0 ||
-    formProductImages.every((_, idx) => productImagesValid[idx] !== false);
+  const isLogoUrlValid = !formImageUrl.trim() || isValidUrl(formImageUrl);
 
   // Calculate form completion as individual steps
   const completedSteps = useMemo(() => {
     const steps = [
-      formEmoji ||
-        (formImageUrl.trim() && isLogoUrlValid && logoImageValid === true), // Visual identity (with valid image)
+      formEmoji || formImageUrl.trim(), // Visual identity
       formName.trim(), // Name
       isWebsiteUrlValid && isGuideUrlValid, // URLs valid
       formCategory && (!isCreatingNewCategory || newCategoryName.trim()), // Category
@@ -133,8 +135,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     formName,
     formEmoji,
     formImageUrl,
-    isLogoUrlValid,
-    logoImageValid,
     isWebsiteUrlValid,
     isGuideUrlValid,
     formCategory,
@@ -145,23 +145,24 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const allComplete = completedSteps.every(Boolean);
 
-  // Step 1 completion: must have emoji OR valid logo image
-  const isStep1Complete = Boolean(
-    formEmoji ||
-      (formImageUrl.trim() && isLogoUrlValid && logoImageValid === true)
-  );
+  // Step 1 completion: must have emoji OR uploaded logo
+  const isStep1Complete = Boolean(formEmoji || formImageUrl.trim());
 
   // Step 2 completion: must have name and valid website URL (guide URL is optional but must be valid if provided)
   const isStep2Complete = Boolean(
-    formName.trim() && isWebsiteUrlValid && isGuideUrlValid
+    formName.trim() && isWebsiteUrlValid && isGuideUrlValid,
   );
 
   // Progressive reveal conditions — in edit mode, show all steps immediately
   const showStep3 = isEditMode || (isStep1Complete && isStep2Complete);
   const showStep4 =
-    isEditMode || (showStep3 &&
-    Boolean(formCategory && (!isCreatingNewCategory || newCategoryName.trim())));
-  const showStep5 = isEditMode || (showStep4 && Boolean(formDescription.trim()));
+    isEditMode ||
+    (showStep3 &&
+      Boolean(
+        formCategory && (!isCreatingNewCategory || newCategoryName.trim()),
+      ));
+  const showStep5 =
+    isEditMode || (showStep4 && Boolean(formDescription.trim()));
 
   // Helper to add an NS Profile URL
   const handleAddNsProfileUrl = () => {
@@ -187,45 +188,8 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setFormNsProfileUrls(formNsProfileUrls.filter((_, i) => i !== index));
   };
 
-  // Helper to add a product image
-  const handleAddProductImage = () => {
-    const url = newProductImageUrl.trim();
-    if (!url) {
-      toast.error("Please enter an image URL");
-      return;
-    }
-    if (!isValidUrl(url)) {
-      toast.error("Please enter a valid URL (http:// or https://)");
-      return;
-    }
-    if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
-      toast.error(`Maximum ${MAX_PRODUCT_IMAGES} images allowed`);
-      return;
-    }
-    if (formProductImages.includes(url)) {
-      toast.error("This image is already added");
-      return;
-    }
-    setFormProductImages([...formProductImages, url]);
-    setNewProductImageUrl("");
-  };
-
   // Helper to remove a product image
   const handleRemoveProductImage = (index: number) => {
-    // Remove from validation state
-    const newValidState = { ...productImagesValid };
-    delete newValidState[index];
-    // Re-index remaining items
-    const reindexed: Record<number, boolean> = {};
-    Object.keys(newValidState).forEach((key) => {
-      const numKey = parseInt(key);
-      if (numKey > index) {
-        reindexed[numKey - 1] = newValidState[numKey];
-      } else {
-        reindexed[numKey] = newValidState[numKey];
-      }
-    });
-    setProductImagesValid(reindexed);
     setFormProductImages(formProductImages.filter((_, i) => i !== index));
   };
 
@@ -265,14 +229,14 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       const existingIds = BASE_CATEGORIES.map((c) => c.id);
       if (customCategory && existingIds.includes(customCategory.id)) {
         toast.error(
-          "This category already exists. Please select it from the list."
+          "This category already exists. Please select it from the list.",
         );
         return;
       }
       // Check for empty slug (e.g., if name was all special chars)
       if (!customCategory?.id) {
         toast.error(
-          "Please enter a valid category name with letters or numbers"
+          "Please enter a valid category name with letters or numbers",
         );
         return;
       }
@@ -323,7 +287,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     // Save form data to localStorage so the callback page can submit it
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ state, project: projectData, timestamp: Date.now() })
+      JSON.stringify({ state, project: projectData, timestamp: Date.now() }),
     );
 
     // Build the return URL for NS platform to redirect back to
@@ -419,71 +383,15 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
             <span className="text-xs text-muted-foreground/50">or</span>
 
-            {/* Image URL Input */}
-            <div className="flex-1 relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
-              </div>
-              <Input
-                type="url"
-                placeholder="Logo URL"
-                value={formImageUrl}
-                onChange={(e) => {
-                  setFormImageUrl(e.target.value);
-                  setLogoImageValid(null); // Reset validation on change
-                }}
-                className={`h-10 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
-                  formImageUrl.trim() && !isValidUrl(formImageUrl)
-                    ? "border-red-400 focus:border-red-400"
-                    : logoImageValid === false
-                    ? "border-red-400 focus:border-red-400"
-                    : logoImageValid === true
-                    ? "border-emerald-400 focus:border-emerald-400"
-                    : ""
-                }`}
-              />
-            </div>
+            {/* Logo Upload */}
+            <ImageDropZone
+              value={formImageUrl || null}
+              onUpload={(url) => setFormImageUrl(url)}
+              onRemove={() => setFormImageUrl("")}
+              type="logo"
+              className="flex-1"
+            />
           </div>
-
-          {/* Image Preview */}
-          {formImageUrl.trim() && isValidUrl(formImageUrl) && (
-            <div
-              className={`flex items-center justify-center p-3 rounded-lg border ${
-                logoImageValid === false
-                  ? "bg-red-50 border-red-200"
-                  : logoImageValid === true
-                  ? "bg-emerald-50 border-emerald-200"
-                  : "bg-muted/30 border-border/50"
-              }`}
-            >
-              <img
-                src={formImageUrl}
-                alt="Logo preview"
-                className={`max-h-16 max-w-full object-contain rounded ${
-                  logoImageValid === false ? "hidden" : ""
-                }`}
-                onError={() => {
-                  setLogoImageValid(false);
-                }}
-                onLoad={() => {
-                  setLogoImageValid(true);
-                }}
-              />
-              {logoImageValid === false && (
-                <div className="text-xs text-red-500 flex items-center gap-1.5">
-                  <X className="h-3 w-3" />
-                  Failed to load image
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Invalid URL message */}
-          {formImageUrl.trim() && !isValidUrl(formImageUrl) && (
-            <p className="text-xs text-red-500">
-              Please enter a valid URL (http:// or https://)
-            </p>
-          )}
         </div>
 
         {/* STEP 2: Basic Info */}
@@ -778,142 +686,37 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
           <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                5. Product Images (recommended)
+                5. Media (recommended)
               </label>
               <span className="text-[10px] text-muted-foreground/50">
                 {formProductImages.length}/{MAX_PRODUCT_IMAGES}
               </span>
             </div>
 
-            {/* URL Input Row */}
-            {formProductImages.length < MAX_PRODUCT_IMAGES && (
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <Images className="h-4 w-4 text-muted-foreground/50" />
-                  </div>
-                  <Input
-                    type="url"
-                    placeholder="Paste image URL..."
-                    value={newProductImageUrl}
-                    onChange={(e) => setNewProductImageUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddProductImage();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      const pastedText = e.clipboardData.getData("text").trim();
-                      if (
-                        pastedText &&
-                        (pastedText.startsWith("http://") ||
-                          pastedText.startsWith("https://"))
-                      ) {
-                        e.preventDefault();
-                        if (formProductImages.length >= MAX_PRODUCT_IMAGES) {
-                          toast.error(
-                            `Maximum ${MAX_PRODUCT_IMAGES} images allowed`
-                          );
-                          return;
-                        }
-                        if (formProductImages.includes(pastedText)) {
-                          toast.error("This image is already added");
-                          return;
-                        }
-                        setFormProductImages([
-                          ...formProductImages,
-                          pastedText,
-                        ]);
-                      }
-                    }}
-                    className="h-9 pl-9 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddProductImage}
-                  className="h-9 px-3 text-xs font-medium border-border/60 hover:bg-muted/50"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-
-            {/* Image Gallery Grid */}
-            {formProductImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                {formProductImages.map((url, index) => (
-                  <div
-                    key={index}
-                    className={`group relative aspect-square rounded-lg overflow-hidden border-2 bg-muted/20 animate-in fade-in-0 zoom-in-95 duration-200 ${
-                      productImagesValid[index] === false
-                        ? "border-red-400"
-                        : productImagesValid[index] === true
-                        ? "border-emerald-400"
-                        : "border-border/50"
-                    }`}
-                  >
-                    <img
-                      src={url}
-                      alt={`Product ${index + 1}`}
-                      className={`w-full h-full object-cover ${
-                        productImagesValid[index] === false ? "hidden" : ""
-                      }`}
-                      onError={() => {
-                        setProductImagesValid((prev) => ({
-                          ...prev,
-                          [index]: false,
-                        }));
-                      }}
-                      onLoad={() => {
-                        setProductImagesValid((prev) => ({
-                          ...prev,
-                          [index]: true,
-                        }));
-                      }}
-                    />
-                    {/* Error state */}
-                    {productImagesValid[index] === false && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 text-red-500">
-                        <X className="h-5 w-5 mb-1" />
-                        <span className="text-[9px] font-medium">Failed</span>
-                      </div>
-                    )}
-                    {/* Hover overlay with delete */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProductImage(index)}
-                        className="w-7 h-7 rounded-full bg-white/90 text-foreground flex items-center justify-center hover:bg-white transition-colors shadow-sm"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {/* Index badge */}
-                    <div
-                      className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full text-white text-[10px] font-medium flex items-center justify-center backdrop-blur-sm ${
-                        productImagesValid[index] === false
-                          ? "bg-red-500"
-                          : "bg-black/50"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Warning if any product images failed */}
-            {!allProductImagesValid && (
-              <p className="text-xs text-red-500">
-                Some images failed to load. Please remove them or use different
-                URLs.
-              </p>
-            )}
+            {/* Image Upload Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {formProductImages.map((url, index) => (
+                <ImageDropZone
+                  key={index}
+                  value={url}
+                  onUpload={() => {}}
+                  onRemove={() => handleRemoveProductImage(index)}
+                  type="product"
+                  compact
+                />
+              ))}
+              {formProductImages.length < MAX_PRODUCT_IMAGES && (
+                <ImageDropZone
+                  value={null}
+                  onUpload={(url) =>
+                    setFormProductImages([...formProductImages, url])
+                  }
+                  onRemove={() => {}}
+                  type="product"
+                  compact
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -921,16 +724,11 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         <Button
           onClick={handleSubmit}
           className={`w-full h-10 text-sm font-medium transition-all duration-300 ${
-            allComplete && allProductImagesValid
+            allComplete
               ? "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
               : ""
           }`}
-          disabled={
-            isSubmitting ||
-            !allComplete ||
-            !allProductImagesValid ||
-            (formImageUrl.trim() && logoImageValid === false)
-          }
+          disabled={isSubmitting || !allComplete}
         >
           {isSubmitting ? (
             <>
