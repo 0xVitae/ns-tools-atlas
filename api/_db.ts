@@ -26,6 +26,7 @@ export const projects = pgTable('projects', {
   customCategoryId: text('custom_category_id'),
   customCategoryName: text('custom_category_name'),
   customCategoryColor: text('custom_category_color'),
+  locations: text('locations').array(),
 });
 
 export const projectRequests = pgTable('project_requests', {

@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       productImages: row.productImages?.length ? row.productImages : undefined,
       tags: row.tags?.length ? row.tags : undefined,
       addedAt: row.addedAt ?? undefined,
+      locations: row.locations?.length ? row.locations : undefined,
       customCategory: row.customCategoryName
         ? { id: row.customCategoryId!, name: row.customCategoryName, color: row.customCategoryColor! }
         : undefined,

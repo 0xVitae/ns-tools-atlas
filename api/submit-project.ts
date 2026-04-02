@@ -46,6 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       customCategoryId: customCategoryName ? category : null,
       customCategoryName: customCategoryName || null,
       customCategoryColor: customCategoryColor || null,
+      locations: ['1.3356,103.5943'], // Default: NS HQ, Forest City Marina Hotel, Malaysia
     });
 
     // Fire-and-forget Telegram notification

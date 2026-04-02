@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from "@/components/ecosystem/Canvas";
 import { MobileProjectList } from "@/components/ecosystem/MobileProjectList";
@@ -39,7 +39,12 @@ import {
   User,
   LogOut,
   ChevronDown,
+  ChevronsUpDown,
+  MapPin,
+  LayoutGrid,
+  Globe,
 } from "lucide-react";
+const MapView = lazy(() => import("@/components/ecosystem/MapView"));
 
 type LeftPanelView =
   | { type: "most-popular" }
@@ -53,9 +58,10 @@ const Index = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"canvas" | "list">(() =>
-    window.location.hash === "#list" ? "list" : "canvas"
+  const [viewMode, setViewMode] = useState<"canvas" | "list" | "map">(() =>
+    window.location.hash === "#list" ? "list" : window.location.hash === "#map" ? "map" : "canvas"
   );
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<EcosystemProject | null>(null);
@@ -247,9 +253,15 @@ const Index = () => {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
-      {/* Canvas fills the whole viewport */}
-      <Canvas projects={projects} onSelectProject={setSelectedProject} highlightedIds={highlightedIds} selectedProjectId={selectedProject?.id || null} />
+    <div className={`fixed inset-0 overflow-hidden ${viewMode === "map" ? "dark" : ""}`}>
+      {/* Main view fills the whole viewport */}
+      {viewMode === "map" ? (
+        <Suspense fallback={<div className="fixed inset-0 bg-[#0a0a0f]" />}>
+          <MapView projects={projects} onSelectProject={setSelectedProject} />
+        </Suspense>
+      ) : (
+        <Canvas projects={projects} onSelectProject={setSelectedProject} highlightedIds={highlightedIds} selectedProjectId={selectedProject?.id || null} />
+      )}
 
       {/* ======= TOP RESOURCE BAR ======= */}
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
@@ -334,19 +346,47 @@ const Index = () => {
                     value={latestUpdate || "—"}
                   />
                   <div className="h-4 w-px bg-foreground/15 mx-1" />
-                  <button
-                    onClick={() => {
-                      const next = viewMode === "canvas" ? "list" : "canvas";
-                      setViewMode(next);
-                      window.location.hash = next === "list" ? "#list" : "";
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <List className="w-3 h-3" />
-                    <span className="text-[10px] uppercase tracking-wider">
-                      List View
-                    </span>
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span className="text-[10px] uppercase tracking-wider">
+                        {viewMode === "map" ? "Map" : "Canvas"}
+                      </span>
+                      <ChevronsUpDown className="w-3 h-3" />
+                    </button>
+                    {viewDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setViewDropdownOpen(false)} />
+                        <div className="absolute right-0 top-full mt-1 z-50 w-36 border-2 border-foreground/20 rounded-lg bg-background/95 backdrop-blur-sm overflow-hidden shadow-lg">
+                          {([
+                            { id: "canvas" as const, label: "Canvas", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+                            { id: "list" as const, label: "List", icon: <List className="w-3.5 h-3.5" /> },
+                            { id: "map" as const, label: "Map", icon: <Globe className="w-3.5 h-3.5" /> },
+                          ]).map((v) => (
+                            <button
+                              key={v.id}
+                              disabled={viewMode === v.id}
+                              onClick={() => {
+                                setViewMode(v.id);
+                                setViewDropdownOpen(false);
+                                window.location.hash = v.id === "canvas" ? "" : `#${v.id}`;
+                              }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                                viewMode === v.id
+                                  ? "text-foreground bg-muted/30 cursor-default"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                              }`}
+                            >
+                              {v.icon}
+                              <span className="text-[10px] font-bold uppercase tracking-wider">{v.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   {user && (
                     <div className="relative">
                       <button
@@ -1081,6 +1121,33 @@ function ProjectDetailPanel({
                 )}
               </div>
             </DetailSection>
+
+            {/* Location */}
+            {project.locations && project.locations.length > 0 && (
+              <DetailSection label="LOCATION">
+                <div className="flex flex-col gap-1.5">
+                  {project.locations.map((loc, idx) => {
+                    const [lat, lon] = loc.split(",").map(Number);
+                    const isNS = Math.abs(lat - 1.3356) < 0.02 && Math.abs(lon - 103.5943) < 0.02;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/30 border border-foreground/5 text-xs"
+                      >
+                        <span className="text-foreground/70">
+                          {isNS ? "Forest City, Malaysia" : `${lat.toFixed(2)}, ${lon.toFixed(2)}`}
+                        </span>
+                        {isNS && (
+                          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground font-mono uppercase tracking-wider">
+                            NS HQ
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </DetailSection>
+            )}
 
             {/* Links */}
             {(project.url || project.guideUrl) && (

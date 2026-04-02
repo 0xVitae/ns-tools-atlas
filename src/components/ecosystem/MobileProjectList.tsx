@@ -48,8 +48,8 @@ interface MobileProjectListProps {
   onAddProject?: (project: Omit<EcosystemProject, "id">) => void;
   isSubmitting?: boolean;
   showViewToggle?: boolean;
-  viewMode?: "canvas" | "list";
-  onViewModeChange?: (mode: "canvas" | "list") => void;
+  viewMode?: "canvas" | "list" | "map";
+  onViewModeChange?: (mode: "canvas" | "list" | "map") => void;
 }
 
 // Get colors based on category

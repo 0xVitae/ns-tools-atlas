@@ -40,6 +40,7 @@ export interface EcosystemProject {
   status?: ProjectStatus;  // Project status (active by default, dead for graveyard)
   postMortem?: string;     // Post-mortem / reason for shutdown (graveyard only)
   addedAt?: string;        // Date the project was added
+  locations?: string[];    // Array of "lat,lon" coordinate strings
 }
 
 export interface CanvasState {
