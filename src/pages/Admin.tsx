@@ -35,7 +35,7 @@ function getAuthHeaders(creds: { password?: string; token?: string }) {
 }
 
 async function fetchAdminData(creds: { password?: string; token?: string }) {
-  const response = await fetch("/api/admin-data", { headers: getAuthHeaders(creds) });
+  const response = await fetch("/api/admin/data", { headers: getAuthHeaders(creds) });
   if (!response.ok) {
     throw new Error(response.status === 401 ? "Invalid password" : `Failed: ${response.status}`);
   }
@@ -49,7 +49,7 @@ async function updateCell(
   column: string,
   value: unknown
 ) {
-  const response = await fetch("/api/admin-update", {
+  const response = await fetch("/api/admin/update", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders(creds) },
     body: JSON.stringify({ table, id, column, value }),
@@ -65,7 +65,7 @@ async function deleteRow(
   table: string,
   id: string
 ) {
-  const response = await fetch("/api/admin-update", {
+  const response = await fetch("/api/admin/update", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders(creds) },
     body: JSON.stringify({ table, id, action: "delete" }),

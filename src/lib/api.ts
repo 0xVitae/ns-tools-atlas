@@ -90,7 +90,7 @@ export async function fetchPendingProjects(creds: { password?: string; token?: s
   const headers: Record<string, string> = {};
   if (creds.token) headers['x-admin-token'] = creds.token;
   else if (creds.password) headers['x-admin-password'] = creds.password;
-  const response = await fetch('/api/pending-projects', { headers });
+  const response = await fetch('/api/admin/pending', { headers });
   if (!response.ok) {
     throw new Error(response.status === 401 ? 'Invalid password' : `Failed to fetch: ${response.status}`);
   }
@@ -110,7 +110,7 @@ export async function updatePendingProject(
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (creds.token) headers['x-admin-token'] = creds.token;
     else if (creds.password) headers['x-admin-password'] = creds.password;
-    const response = await fetch('/api/approve-project', {
+    const response = await fetch('/api/admin/approve', {
       method: 'POST',
       headers,
       body: JSON.stringify({ id, action, updates }),
