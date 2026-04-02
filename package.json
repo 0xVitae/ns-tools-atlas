@@ -20,6 +20,7 @@
     "db:local:stop": "docker compose down"
   },
   "dependencies": {
+    "@chenglou/pretext": "^0.0.4",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-accordion": "^1.2.11",

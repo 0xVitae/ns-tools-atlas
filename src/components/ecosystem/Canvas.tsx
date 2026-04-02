@@ -16,6 +16,7 @@ import ActionSearchBar, {
   Action,
   ActionSearchBarRef,
 } from "@/components/kokonutui/action-search-bar";
+import { measureCellDimensions } from "@/lib/textMeasure";
 
 interface CanvasProps {
   projects: EcosystemProject[];
@@ -30,22 +31,21 @@ interface CanvasProps {
 const PADDING = 40;
 const GAP = 24;
 const TITLE_HEIGHT = 90;
-const MIN_BOX_WIDTH = 180; // Smaller minimum for 1-2 items
-const MIN_BOX_HEIGHT = 140; // Smaller minimum height
-const CELL_WIDTH = 115; // Width per item cell
-const CELL_HEIGHT = 105; // Height per item cell (icon + label + spacing)
-const ITEMS_PER_ROW_BASE = 3; // 3 items per row for more vertical growth
+const MIN_BOX_WIDTH = 180;
+const MIN_BOX_HEIGHT = 140;
+const ITEMS_PER_ROW_BASE = 3;
 
-// Calculate box dimensions based on project count
-const calculateBoxSize = (projectCount: number) => {
-  const count = Math.max(1, projectCount);
+// Calculate box dimensions based on actual project names (measured via pretext)
+const calculateBoxSize = (projectNames: string[]) => {
+  const count = Math.max(1, projectNames.length);
   const cols = Math.min(count, ITEMS_PER_ROW_BASE);
   const rows = Math.ceil(count / ITEMS_PER_ROW_BASE);
 
-  const width = Math.max(MIN_BOX_WIDTH, cols * CELL_WIDTH + 40);
-  const height = Math.max(MIN_BOX_HEIGHT, rows * CELL_HEIGHT + 50);
+  const { cellWidth, cellHeight } = measureCellDimensions(projectNames);
+  const width = Math.max(MIN_BOX_WIDTH, cols * cellWidth + 40);
+  const height = Math.max(MIN_BOX_HEIGHT, rows * cellHeight + 50);
 
-  return { width, height };
+  return { width, height, cellWidth, cellHeight };
 };
 
 // Simple column-based layout algorithm
@@ -65,11 +65,11 @@ const calculateLayout = (
     ),
   );
 
-  // Calculate sizes for each category
+  // Calculate sizes for each category using actual project names
   const categoryData = Array.from(allCategoryIds).map((id) => {
-    const count = projectsByCategory[id]?.length || 0;
-    const size = calculateBoxSize(count);
-    return { id, ...size, count };
+    const names = (projectsByCategory[id] || []).map((p) => p.name);
+    const size = calculateBoxSize(names);
+    return { id, ...size, count: names.length };
   });
 
   // Sort by height (tallest first) for better packing
@@ -321,9 +321,12 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     const padding = 15;
     const topPadding = 35;
-    // Account for full card + label size (80px wide card, 100px label, ~78px tall total)
-    const itemHalfW = 55;
-    const itemHalfH = 45;
+    // Use pretext-measured cell dimensions for accurate spacing
+    const { cellWidth, cellHeight } = measureCellDimensions(
+      categoryProjects.map((p) => p.name),
+    );
+    const itemHalfW = cellWidth / 2;
+    const itemHalfH = cellHeight / 2;
 
     const minX = padding + itemHalfW;
     const maxX = boxWidth - padding - itemHalfW;
@@ -351,8 +354,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       };
     });
 
-    // Desired minimum distance between centers (based on card+label footprint)
-    const restDist = 115;
+    // Desired minimum distance between centers (based on measured cell footprint)
+    const restDist = cellWidth;
 
     // Run simulation
     const iterations = 150;
@@ -996,7 +999,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                             />
                           </svg>
                         )}
-                        <span className="truncate">{project.name}</span>
+                        <span className="line-clamp-2">{project.name}</span>
                       </div>
                     </div>
                   );
