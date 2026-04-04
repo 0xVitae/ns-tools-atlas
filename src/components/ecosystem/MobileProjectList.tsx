@@ -14,7 +14,6 @@ import {
   ChevronDown,
   Search,
   X,
-  LayoutGrid,
   ListFilter,
   Skull,
   Lightbulb,
@@ -570,19 +569,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* View Toggle - always show if handler provided */}
-              {onViewModeChange && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3 rounded-full border-gray-200 gap-1.5"
-                  onClick={() => onViewModeChange("canvas")}
-                  title="Switch to canvas view"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  <span className="text-xs font-medium">Go to Canvas</span>
-                </Button>
-              )}
+              {/* View Toggle - hidden on mobile, canvas not usable on small screens */}
 
               {/* Status Views dropdown */}
               <DropdownMenu>
@@ -647,7 +634,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                 placeholder="Search projects..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-[15px] placeholder:text-gray-400"
+                className="pl-9 pr-9 h-10 bg-gray-50 border-gray-200 rounded-xl text-base placeholder:text-gray-400"
               />
               {searchQuery && (
                 <button

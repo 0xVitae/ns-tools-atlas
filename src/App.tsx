@@ -22,8 +22,19 @@ const queryClient = new QueryClient();
 function AuthenticatedApp() {
   const { isLoading, isAuthenticated } = useAuth();
 
-  if (isLoading) return <AuthLoading />;
-  if (!isAuthenticated) return <LoginPage />;
+  if (isLoading) return (
+    <BrowserRouter>
+      <Index />
+      <AuthLoading />
+    </BrowserRouter>
+  );
+
+  if (!isAuthenticated) return (
+    <BrowserRouter>
+      <Index />
+      <LoginPage />
+    </BrowserRouter>
+  );
 
   return (
     <BrowserRouter>
