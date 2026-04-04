@@ -42,6 +42,8 @@ interface AddProjectFormProps {
   isSubmitting?: boolean;
   categories: Category[];
   isMobile?: boolean;
+  /** Logged-in user's NS username — auto-added as first profile URL on create */
+  nsUsername?: string | null;
   /** When provided, the form operates in edit mode with pre-filled values */
   editProject?: EcosystemProject;
   /** Called on save in edit mode */
@@ -60,11 +62,13 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   isSubmitting,
   categories,
   isMobile = false,
+  nsUsername,
   editProject: editingProject,
   onSaveEdit,
   renderFormOnly = false,
 }) => {
   const isEditMode = !!editingProject;
+  const creatorProfileUrl = nsUsername ? `https://ns.com/${nsUsername}` : null;
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState(editingProject?.name || "");
@@ -94,10 +98,11 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     editingProject?.productImages || [],
   );
 
-  // NS Profile URLs state (max 3)
-  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>(
-    editingProject?.nsProfileUrls || [],
-  );
+  // NS Profile URLs state (max 3) — auto-seed creator's profile on create
+  const [formNsProfileUrls, setFormNsProfileUrls] = useState<string[]>(() => {
+    if (editingProject?.nsProfileUrls) return editingProject.nsProfileUrls;
+    return creatorProfileUrl ? [creatorProfileUrl] : [];
+  });
   const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
   const [showNsProfileInput, setShowNsProfileInput] = useState(false);
 
@@ -181,24 +186,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const allComplete = completedSteps.every(Boolean);
 
-  // Step 1 completion: must have emoji OR uploaded logo
-  const isStep1Complete = Boolean(formEmoji || formImageUrl.trim());
-
-  // Step 2 completion: must have name and valid website URL (guide URL is optional but must be valid if provided)
-  const isStep2Complete = Boolean(
-    formName.trim() && isWebsiteUrlValid && isGuideUrlValid,
-  );
-
-  // Progressive reveal conditions — in edit mode, show all steps immediately
-  const showStep3 = isEditMode || (isStep1Complete && isStep2Complete);
-  const showStep4 =
-    isEditMode ||
-    (showStep3 &&
-      Boolean(
-        formCategory && (!isCreatingNewCategory || newCategoryName.trim()),
-      ));
-  const showStep5 =
-    isEditMode || (showStep4 && Boolean(formDescription.trim()));
+  // All steps always visible
+  const showStep3 = true;
+  const showStep4 = true;
+  const showStep5 = true;
 
   // Helper to add an NS Profile URL
   const handleAddNsProfileUrl = () => {
@@ -219,8 +210,15 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
     setNewNsProfileUrl("");
   };
 
+  // Check if a profile URL belongs to the creator (non-removable)
+  const isCreatorUrl = (url: string) =>
+    !!creatorProfileUrl &&
+    url.toLowerCase().replace(/\/+$/, "") ===
+      creatorProfileUrl.toLowerCase().replace(/\/+$/, "");
+
   // Helper to remove an NS Profile URL
   const handleRemoveNsProfileUrl = (index: number) => {
+    if (isCreatorUrl(formNsProfileUrls[index])) return;
     setFormNsProfileUrls(formNsProfileUrls.filter((_, i) => i !== index));
   };
 
@@ -430,6 +428,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               className="flex-1"
             />
           </div>
+          <p className="text-[10px] text-muted-foreground/50">
+            Recommended: 128×128px square PNG or JPG
+          </p>
         </div>
 
         {/* STEP 2: Basic Info */}
@@ -535,24 +536,33 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               {/* Added URLs List - shown first */}
               {formNsProfileUrls.length > 0 && (
                 <div className="space-y-1.5">
-                  {formNsProfileUrls.map((url, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                      <span className="flex-1 text-xs text-foreground truncate">
-                        {url}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNsProfileUrl(index)}
-                        className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  {formNsProfileUrls.map((url, index) => {
+                    const isCreator = isCreatorUrl(url);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                        <span className="flex-1 text-xs text-foreground truncate">
+                          {url}
+                        </span>
+                        {isCreator ? (
+                          <span className="text-[9px] text-muted-foreground/50 shrink-0">
+                            you
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNsProfileUrl(index)}
+                            className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -641,7 +651,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 3: Classification */}
         {showStep3 && (
-          <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               3. Classification
             </label>
@@ -705,7 +715,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 4: Description */}
         {showStep4 && (
-          <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               4. Description
             </label>
@@ -721,7 +731,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 5: Product Images */}
         {showStep5 && (
-          <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 5. Media (recommended)
@@ -760,7 +770,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 6: Products & Plans */}
         {showStep5 && (
-          <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 6. Products (optional)

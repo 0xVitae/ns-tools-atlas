@@ -4,7 +4,8 @@ import { optimizeImage } from "@/lib/imageOptimize";
 import { ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_TYPES_DEFAULT = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_TYPES_LOGO = ["image/jpeg", "image/png"];
 const MAX_RAW_SIZE = 10 * 1024 * 1024; // 10MB before optimization
 
 interface ImageDropZoneProps {
@@ -28,10 +29,12 @@ export function ImageDropZone({
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  const acceptedTypes = type === "logo" ? ACCEPTED_TYPES_LOGO : ACCEPTED_TYPES_DEFAULT;
+
   const processFile = useCallback(
     async (file: File) => {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        toast.error("Please use JPG, PNG, WebP, or GIF");
+      if (!acceptedTypes.includes(file.type)) {
+        toast.error(type === "logo" ? "Logo must be PNG or JPG" : "Please use JPG, PNG, WebP, or GIF");
         return;
       }
       if (file.size > MAX_RAW_SIZE) {
@@ -82,7 +85,7 @@ export function ImageDropZone({
       <div className={`relative group ${className}`}>
         <div
           className={`overflow-hidden rounded-lg border-2 border-emerald-400 bg-muted/20 flex items-center justify-center ${
-            compact ? "aspect-square" : type === "logo" ? "h-16" : "aspect-video"
+            compact ? "aspect-square" : type === "logo" ? "aspect-square h-16" : "aspect-video"
           }`}
         >
           <img
@@ -122,15 +125,15 @@ export function ImageDropZone({
           dragging
             ? "border-primary bg-primary/5"
             : "border-border/60 hover:border-foreground/30 hover:bg-muted/30"
-        } ${compact ? "aspect-square" : type === "logo" ? "h-16" : "py-4"}`}
+        } ${compact ? "aspect-square" : type === "logo" ? "aspect-square h-16" : "py-4"}`}
       >
         {uploading ? (
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         ) : (
           <>
             <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
-            <span className="text-[10px] text-muted-foreground/50 mt-1">
-              {compact ? "Add" : "Drop image or click"}
+            <span className="text-[10px] text-muted-foreground/50 mt-1 text-center leading-tight">
+              {compact ? "Add" : "Drop image\nor click"}
             </span>
           </>
         )}
@@ -138,7 +141,7 @@ export function ImageDropZone({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={type === "logo" ? "image/jpeg,image/png" : "image/jpeg,image/png,image/webp,image/gif"}
         className="hidden"
         onChange={handleChange}
       />

@@ -48,6 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FullCanvasProps {
   projects: EcosystemProject[];
@@ -225,6 +226,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
   hideOverlay,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
@@ -1263,6 +1265,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
           onAddProject={onAddProject}
           isSubmitting={isSubmitting}
           categories={categories}
+          nsUsername={user?.nsUsername}
         />
       </div>
       </>)}

@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddProjectForm } from "./AddProjectForm";
+import { useAuth } from "@/hooks/useAuth";
 import { ProjectTag } from "@/types/ecosystem";
 
 interface MobileProjectListProps {
@@ -415,6 +416,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
   showViewToggle,
   onViewModeChange,
 }) => {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] =
     useState<EcosystemProject | null>(null);
@@ -630,6 +632,7 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                 onAddProject={onAddProject}
                 isSubmitting={isSubmitting}
                 categories={categories}
+                nsUsername={user?.nsUsername}
                 isMobile={!showViewToggle}
               />
             </div>

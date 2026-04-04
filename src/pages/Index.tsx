@@ -51,7 +51,9 @@ import {
   MapPin,
   LayoutGrid,
   Globe,
+  Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Accordion,
   AccordionItem,
@@ -60,6 +62,7 @@ import {
 } from "@/components/ui/accordion";
 const mapViewImport = () => import("@/components/ecosystem/MapView");
 const MapView = lazy(mapViewImport);
+const Admin = lazy(() => import("@/pages/Admin"));
 
 type LeftPanelView =
   | { type: "most-popular" }
@@ -87,8 +90,13 @@ const Index = () => {
   const [editingProject, setEditingProject] = useState<EcosystemProject | null>(
     null,
   );
+  const [addingProject, setAddingProject] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("admin") || params.has("token");
+  });
   const [leftPanel, setLeftPanel] = useState<LeftPanelView>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
 
@@ -845,6 +853,7 @@ const Index = () => {
               <AddProjectForm
                 categories={categories}
                 editProject={editingProject}
+                nsUsername={user?.nsUsername}
                 isSubmitting={false}
                 renderFormOnly
                 onSaveEdit={async (projectId, updates) => {
@@ -857,6 +866,41 @@ const Index = () => {
                     toast.error(result.error || "Failed to save");
                   }
                 }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ======= RIGHT PANEL — Add Project (desktop) ======= */}
+      <div
+        className={`absolute ${ownedProjectIds.size > 0 ? "top-[102px]" : "top-14"} right-0 z-[60] hidden md:block pointer-events-auto transition-all duration-300 ease-in-out ${
+          addingProject && !editingProject && !selectedProject
+            ? "translate-x-0 opacity-100"
+            : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
+        {addingProject && (
+          <div className="w-[340px] max-h-[calc(100vh-180px)] flex flex-col">
+            <div className="flex justify-between items-end pr-3">
+              <div className="bg-background/90 backdrop-blur-sm border border-b-0 border-foreground/20 rounded-t px-2.5 py-0.5 ml-3">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+                  ADD PROJECT
+                </span>
+              </div>
+              <button
+                onClick={() => setAddingProject(false)}
+                className="p-1 mb-0.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="border-l-2 border-t-2 border-b-2 border-foreground/20 rounded-l-lg bg-background/95 backdrop-blur-sm overflow-y-auto flex-1">
+              <AddProjectForm
+                categories={categories}
+                nsUsername={user?.nsUsername}
+                isSubmitting={false}
+                renderFormOnly
               />
             </div>
           </div>
@@ -968,12 +1012,47 @@ const Index = () => {
             DRAG TO PAN &middot; SCROLL TO ZOOM
           </span>
         }
-        rightContent={<AddProjectForm categories={categories} />}
+        rightContent={
+          <Button
+            size="lg"
+            className="rounded-full shadow-lg h-14 px-6 gap-2 text-base hidden md:flex"
+            onClick={() => {
+              setAddingProject(true);
+              setEditingProject(null);
+              setSelectedProject(null);
+            }}
+          >
+            <Plus className="h-5 w-5" />
+            Add Project
+          </Button>
+        }
         onListView={() => {
           setViewMode("list");
           window.location.hash = "#list";
         }}
       />
+
+      {/* ======= ADMIN OVERLAY ======= */}
+      {adminOpen && (
+        <div className="fixed inset-0 z-[200]">
+          <Suspense
+            fallback={
+              <div className="fixed inset-0 bg-white flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+              </div>
+            }
+          >
+            <Admin onClose={() => {
+              setAdminOpen(false);
+              // Clean up URL params
+              const url = new URL(window.location.href);
+              url.searchParams.delete("admin");
+              url.searchParams.delete("token");
+              window.history.replaceState({}, "", url.pathname + url.hash);
+            }} />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 };
