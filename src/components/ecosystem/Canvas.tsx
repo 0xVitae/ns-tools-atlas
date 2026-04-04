@@ -233,13 +233,36 @@ export const Canvas: React.FC<CanvasProps> = ({
     return calculateLayout(categories, projectsByCategory);
   }, [categories, projectsByCategory]);
 
+  // Clamp pan so at least 20% of the canvas stays visible in the viewport
+  const clampTransform = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const { scale } = transformRef.current;
+    const vw = container.clientWidth;
+    const vh = container.clientHeight;
+    const cw = canvasWidth * scale;
+    const ch = canvasHeight * scale;
+    // At least 20% of the scaled canvas must remain inside the viewport
+    const keepVisible = 0.2;
+    const minX = vw - cw;         // canvas right edge at viewport right edge
+    const maxX = 0;                // canvas left edge at viewport left edge
+    const minY = vh - ch;         // canvas bottom edge at viewport bottom edge
+    const maxY = 0;                // canvas top edge at viewport top edge
+    // Expand bounds so you can pan until only keepVisible fraction is still showing
+    const padX = cw * (1 - keepVisible);
+    const padY = ch * (1 - keepVisible);
+    transformRef.current.x = Math.min(Math.max(transformRef.current.x, minX - padX), maxX + padX);
+    transformRef.current.y = Math.min(Math.max(transformRef.current.y, minY - padY), maxY + padY);
+  }, [canvasWidth, canvasHeight]);
+
   // Apply transform directly to DOM (no React re-render)
   const applyTransform = useCallback(() => {
     if (canvasRef.current) {
+      clampTransform();
       const { x, y, scale } = transformRef.current;
       canvasRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     }
-  }, []);
+  }, [clampTransform]);
 
   // Center the canvas on load and when layout changes
   useEffect(() => {
@@ -787,30 +810,11 @@ export const Canvas: React.FC<CanvasProps> = ({
     return () => container.removeEventListener("wheel", wheelHandler);
   }, [applyTransform]);
 
-  // Sync external selectedProjectId → internal selectedItem and pan to it
+  // Sync external selectedProjectId → internal selectedItem (without panning)
   useEffect(() => {
     if (selectedProjectId === undefined) return;
     setSelectedItem(selectedProjectId);
-    if (selectedProjectId) {
-      const project = projects.find((p) => p.id === selectedProjectId);
-      if (project) {
-        const boxLayout = dynamicLayout[project.category];
-        const pos = categoryPositions[project.category]?.[project.id];
-        if (boxLayout && pos) {
-          const projectX = boxLayout.x + pos.x;
-          const projectY = boxLayout.y + pos.y;
-          const container = containerRef.current;
-          if (container) {
-            const rect = container.getBoundingClientRect();
-            const scale = transformRef.current.scale;
-            transformRef.current.x = rect.width / 2 - projectX * scale;
-            transformRef.current.y = rect.height / 2 - projectY * scale;
-            applyTransform();
-          }
-        }
-      }
-    }
-  }, [selectedProjectId, projects, dynamicLayout, categoryPositions, applyTransform]);
+  }, [selectedProjectId]);
 
   // Cmd+K to focus search bar
   useEffect(() => {

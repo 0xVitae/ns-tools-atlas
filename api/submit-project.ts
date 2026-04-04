@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { name, category, description, url, guideUrl, nsProfileUrls, imageUrl, emoji, productImages, tags, customCategoryName, customCategoryColor } = req.body;
+    const { name, category, description, url, guideUrl, nsProfileUrls, imageUrl, emoji, productImages, tags, customCategoryName, customCategoryColor, plans } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ error: 'Name is required' });
@@ -46,6 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       customCategoryId: customCategoryName ? category : null,
       customCategoryName: customCategoryName || null,
       customCategoryColor: customCategoryColor || null,
+      plans: plans ? JSON.stringify(plans) : null,
       locations: ['1.3356,103.5943'], // Default: NS HQ, Forest City Marina Hotel, Malaysia
     });
 

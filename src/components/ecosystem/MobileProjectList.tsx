@@ -559,11 +559,11 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
               />
               <div>
                 <h1 className="text-lg font-bold text-gray-900 leading-tight">
-                  NS Tools Atlas
+                  NS Tools
                 </h1>
-                <p className="text-xs text-gray-500">
+                {/* <p className="text-xs text-gray-500">
                   {projects.length} projects
-                </p>
+                </p> */}
               </div>
             </div>
 
@@ -573,11 +573,12 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 px-3 rounded-full border-gray-200"
+                  className="h-9 px-3 rounded-full border-gray-200 gap-1.5"
                   onClick={() => onViewModeChange("canvas")}
                   title="Switch to canvas view"
                 >
                   <LayoutGrid className="h-4 w-4" />
+                  <span className="text-xs font-medium">Go to Canvas</span>
                 </Button>
               )}
 
@@ -612,7 +613,11 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="gap-2 text-muted-foreground"
-                    onClick={() => { fetch("/api/auth/logout").then(() => { window.location.replace("/"); }); }}
+                    onClick={() => {
+                      fetch("/api/auth/logout").then(() => {
+                        window.location.replace("/");
+                      });
+                    }}
                   >
                     <LogOut className="h-4 w-4" />
                     Log out
@@ -797,7 +802,9 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
 
       {/* Legend */}
       <div className="px-4 pt-3 flex flex-col gap-0.5 text-[11px]">
-        <span className="text-[10px] font-medium text-muted-foreground px-2">Legend:</span>
+        <span className="text-[10px] font-medium text-muted-foreground px-2">
+          Legend:
+        </span>
         <button
           className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
             activeTagFilters.includes("nsOfficial")
@@ -806,14 +813,24 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
           }`}
           onClick={() => toggleTagFilter("nsOfficial")}
         >
-          <svg width="10" height="7" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z" fill="currentColor" />
+          <svg
+            width="10"
+            height="7"
+            viewBox="0 0 30 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M9.04883 0C14.4015 1.58136e-05 18.0466 0.857342 21.4111 0.857422C24.5739 0.857419 26.8592 0.730968 29.0273 0.478516C29.2469 0.453142 29.4413 0.621298 29.4414 0.838867V19.2832C29.4411 19.4516 29.323 19.5976 29.1543 19.626C27.6623 19.8749 24.1475 20 21.4111 20C18.4798 19.9999 14.1466 19.1426 9.55859 19.1426C5.14747 19.1426 2.72034 19.3956 0.432617 19.7822C0.207077 19.8203 0.000341557 19.6499 0 19.4248V1.0332C3.69636e-05 0.851129 0.136849 0.697243 0.320312 0.673828C2.56107 0.389876 5.35291 0 9.04883 0ZM13.4951 8.76074C11.9493 8.65328 10.6111 8.66895 9.43164 8.66895V11.1475C10.2548 11.1475 11.7426 11.1495 13.4922 11.2998C13.4903 13.3072 13.492 15.0743 13.5088 15.4326C14.1458 15.5754 14.5286 15.5754 15.791 15.8018V11.5508C17.549 11.7554 18.8433 11.8613 20.1377 11.8613V9.29004C18.7357 9.29004 17.6985 9.187 15.791 8.98242V4.79199C15.7758 4.78999 14.1434 4.57627 13.5088 4.57617C13.5086 4.61678 13.5007 6.53989 13.4951 8.76074Z"
+              fill="currentColor"
+            />
           </svg>
           <span>NS Official</span>
         </button>
         <button
           className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${
-            activeTagFilters.length > 0 && !activeTagFilters.includes("nsOfficial")
+            activeTagFilters.length > 0 &&
+            !activeTagFilters.includes("nsOfficial")
               ? "bg-muted font-medium text-foreground"
               : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
           }`}
@@ -899,19 +916,42 @@ export const MobileProjectList: React.FC<MobileProjectListProps> = ({
       <div className="sticky bottom-0 z-40 bg-white/90 backdrop-blur-sm border-t border-gray-200 px-4 py-2 flex items-center justify-between text-[16px]">
         {/* Left: Credits */}
         <div className="flex items-center gap-2 text-muted-foreground">
-          <a href="https://x.com/byornoste" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Byorn</a>
+          <a
+            href="https://x.com/byornoste"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            Byorn
+          </a>
           <span className="text-border">|</span>
-          <a href="https://github.com/0xVitae/ns-tools-atlas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+          <a
+            href="https://github.com/0xVitae/ns-tools-atlas"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            GitHub
+          </a>
           <span className="text-border">|</span>
-          <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
+          <a href="/docs" className="hover:text-foreground transition-colors">
+            Docs
+          </a>
         </div>
 
         {/* Right: Stats */}
         <span className="text-muted-foreground text-[13px]">
-          {projects.length} projects · {(() => {
-            const months = Math.floor((Date.now() - new Date("2025-01-01").getTime()) / (1000 * 60 * 60 * 24 * 30));
-            return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}mo` : `${months}mo`;
-          })()} old
+          {projects.length} projects ·{" "}
+          {(() => {
+            const months = Math.floor(
+              (Date.now() - new Date("2025-01-01").getTime()) /
+                (1000 * 60 * 60 * 24 * 30),
+            );
+            return months >= 12
+              ? `${Math.floor(months / 12)}y ${months % 12}mo`
+              : `${months}mo`;
+          })()}{" "}
+          old
         </span>
       </div>
 

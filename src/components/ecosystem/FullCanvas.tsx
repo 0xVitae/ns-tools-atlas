@@ -903,6 +903,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     };
   }, []);
 
+
   // Attach wheel listener with passive: false to allow preventDefault
   useEffect(() => {
     const container = containerRef.current;
@@ -1157,6 +1158,15 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
                 <Skull className="h-4 w-4 text-gray-400" />
                 Graveyard
               </DropdownMenuItem>
+              {onViewModeChange && (
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={() => onViewModeChange("list")}
+                >
+                  <List className="h-4 w-4" />
+                  List View
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-muted-foreground"
@@ -1212,35 +1222,6 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
         </div>
       </div>
 
-      {/* Sticky Footer Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-sm border-t border-border px-4 py-2 hidden md:flex items-center justify-between text-[16px]">
-        {/* Left: Canvas hint */}
-        <span className="text-muted-foreground">
-          {isTouchDevice
-            ? "Drag to pan · Pinch to zoom"
-            : "Drag to pan · Scroll to zoom"}
-        </span>
-
-        {/* Center: Stats */}
-        <span className="text-muted-foreground">
-          {projects.length} projects · Est. Jan 2025 · {(() => {
-            const months = Math.floor((Date.now() - new Date("2025-01-01").getTime()) / (1000 * 60 * 60 * 24 * 30));
-            return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}mo` : `${months}mo`;
-          })()} ago
-        </span>
-
-        {/* Right: Credits */}
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <a href="https://x.com/byornoste" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Built by Byorn</a>
-          <span className="text-border">|</span>
-          <a href="https://github.com/0xVitae/ns-tools-atlas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
-          <span className="text-border">|</span>
-          <a href="https://cal.com/byorn/15min?user=byorn" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Office Hours</a>
-          <span className="text-border">|</span>
-          <a href="/docs" className="hover:text-foreground transition-colors">Docs</a>
-        </div>
-      </div>
-
       {/* Mobile: List button only - Top Right */}
       {onViewModeChange && (
         <div className="absolute top-4 right-4 z-30 md:hidden">
@@ -1289,7 +1270,7 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="w-full h-full cursor-grab select-none"
+        className="w-full h-full cursor-grab select-none overflow-hidden"
         style={{ touchAction: "none" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

@@ -6,10 +6,11 @@ import { getDb, projects } from './_db.js';
 // Fields the project owner is allowed to edit
 const EDITABLE_FIELDS = new Set([
   'description', 'url', 'guideUrl', 'imageUrl', 'emoji',
-  'productImages', 'nsProfileUrls',
+  'productImages', 'nsProfileUrls', 'plans',
 ]);
 
 const ARRAY_FIELDS = new Set(['productImages', 'nsProfileUrls']);
+const JSON_FIELDS = new Set(['plans']);
 
 function parseArray(val: unknown): string[] | null {
   if (!val) return null;
@@ -77,7 +78,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safeUpdates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updates)) {
       if (!EDITABLE_FIELDS.has(key)) continue;
-      safeUpdates[key] = ARRAY_FIELDS.has(key) ? parseArray(value) : (value || null);
+      if (JSON_FIELDS.has(key)) {
+        safeUpdates[key] = value ? JSON.stringify(value) : null;
+      } else if (ARRAY_FIELDS.has(key)) {
+        safeUpdates[key] = parseArray(value);
+      } else {
+        safeUpdates[key] = value || null;
+      }
     }
 
     if (Object.keys(safeUpdates).length === 0) {

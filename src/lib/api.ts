@@ -139,6 +139,7 @@ export async function submitProject(
       productImages: project.productImages?.join('|') || undefined,
       nsProfileUrls: project.nsProfileUrls?.join('|') || undefined,
       tags: project.tags?.join('|') || undefined,
+      plans: project.plans || undefined,
       customCategoryName: project.customCategory?.name,
       customCategoryColor: project.customCategory?.color,
     };

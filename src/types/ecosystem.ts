@@ -24,6 +24,15 @@ export interface CustomCategory {
   color: string;        // auto-assigned from available colors
 }
 
+export interface ProductPlan {
+  name: string;
+  price: string;
+  interval?: string;
+  description: string;
+  url?: string;
+  features: string[];
+}
+
 export interface EcosystemProject {
   id: string;
   name: string;
@@ -41,6 +50,7 @@ export interface EcosystemProject {
   postMortem?: string;     // Post-mortem / reason for shutdown (graveyard only)
   addedAt?: string;        // Date the project was added
   locations?: string[];    // Array of "lat,lon" coordinate strings
+  plans?: ProductPlan[];   // Products / pricing plans
 }
 
 export interface CanvasState {

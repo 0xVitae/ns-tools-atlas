@@ -12,6 +12,8 @@ import {
   Smile,
   Sparkles,
   ExternalLink,
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { ImageDropZone } from "@/components/ui/ImageDropZone";
 import { Button } from "@/components/ui/button";
@@ -99,11 +101,45 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   const [newNsProfileUrl, setNewNsProfileUrl] = useState("");
   const [showNsProfileInput, setShowNsProfileInput] = useState(false);
 
+  // Products / Plans state
+  interface FormPlan {
+    name: string;
+    price: string;
+    interval: string;
+    description: string;
+    url: string;
+    features: string[];
+  }
+  const [formPlans, setFormPlans] = useState<FormPlan[]>(
+    editingProject?.plans?.map((p) => ({
+      name: p.name,
+      price: p.price,
+      interval: p.interval || "",
+      description: p.description,
+      url: p.url || "",
+      features: [...p.features],
+    })) || [],
+  );
+  const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
+  const [newFeatureText, setNewFeatureText] = useState("");
+
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
 
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
   const MAX_PRODUCT_IMAGES = 3;
+
+  // Auto-prepend https:// if user entered a bare domain
+  const normalizeUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  // Strip protocol for display in inputs
+  const stripProtocol = (url: string): string =>
+    url.replace(/^https?:\/\//i, "");
 
   // URL validation helper
   const isValidUrl = (url: string): boolean => {
@@ -262,6 +298,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         emoji: formEmoji || null,
         productImages: formProductImages.length > 0 ? formProductImages : null,
         nsProfileUrls: formNsProfileUrls.length > 0 ? formNsProfileUrls : null,
+        plans: formPlans.length > 0 ? formPlans : null,
       });
       return;
     }
@@ -278,6 +315,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       emoji: formEmoji || undefined,
       productImages:
         formProductImages.length > 0 ? formProductImages : undefined,
+      plans: formPlans.length > 0 ? formPlans : undefined,
       customCategory: isCreatingNewCategory ? customCategory : undefined,
     };
 
@@ -412,10 +450,12 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
             />
             <div>
               <Input
-                type="url"
                 placeholder="Website URL *"
-                value={formUrl}
+                value={stripProtocol(formUrl)}
                 onChange={(e) => setFormUrl(e.target.value)}
+                onBlur={() => {
+                  if (formUrl.trim()) setFormUrl(normalizeUrl(formUrl));
+                }}
                 className={`h-10 text-sm placeholder:text-muted-foreground/50 border-border/60 focus:border-foreground/30 ${
                   formUrl.trim()
                     ? isWebsiteUrlValid
@@ -424,11 +464,6 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                     : ""
                 }`}
               />
-              {formUrl.trim() && !isWebsiteUrlValid && (
-                <p className="text-xs text-red-500 mt-1">
-                  Please enter a valid URL (http:// or https://)
-                </p>
-              )}
             </div>
             {/* How to Guide - optional, toggle to show */}
             <div>
@@ -445,10 +480,13 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               {(showGuideUrlInput || formGuideUrl.trim()) && (
                 <div className="flex gap-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                   <Input
-                    type="url"
                     placeholder="How to Guide URL"
-                    value={formGuideUrl}
+                    value={stripProtocol(formGuideUrl)}
                     onChange={(e) => setFormGuideUrl(e.target.value)}
+                    onBlur={() => {
+                      if (formGuideUrl.trim())
+                        setFormGuideUrl(normalizeUrl(formGuideUrl));
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Escape" && !formGuideUrl.trim()) {
                         setShowGuideUrlInput(false);
@@ -717,6 +755,249 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
                 />
               )}
             </div>
+          </div>
+        )}
+
+        {/* STEP 6: Products & Plans */}
+        {showStep5 && (
+          <div className="space-y-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                6. Products (optional)
+              </label>
+              <span className="text-[10px] text-muted-foreground/50">
+                {formPlans.length} plan{formPlans.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* Existing plans */}
+            <div className="space-y-1.5">
+              {formPlans.map((plan, idx) => (
+                <div
+                  key={idx}
+                  className="border border-border/60 rounded-lg overflow-hidden"
+                >
+                  {/* Plan header — click to expand */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedPlan(expandedPlan === idx ? null : idx)
+                    }
+                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-medium text-foreground">
+                      <span>{plan.name || "Untitled Plan"}</span>
+                      {plan.price && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                          {plan.price}
+                          {plan.interval && (
+                            <span className="text-emerald-500">
+                              /{plan.interval}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className="p-1 text-muted-foreground/50 hover:text-red-500 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormPlans(formPlans.filter((_, i) => i !== idx));
+                          if (expandedPlan === idx) setExpandedPlan(null);
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </span>
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
+                          expandedPlan === idx ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </button>
+
+                  {/* Expanded editor */}
+                  {expandedPlan === idx && (
+                    <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/40 animate-in fade-in-0 duration-150">
+                      <Input
+                        placeholder="Plan name *"
+                        value={plan.name}
+                        onChange={(e) => {
+                          const updated = [...formPlans];
+                          updated[idx] = { ...plan, name: e.target.value };
+                          setFormPlans(updated);
+                        }}
+                        className="h-8 text-xs border-border/60"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Price (e.g. $5)"
+                          value={plan.price}
+                          onChange={(e) => {
+                            const updated = [...formPlans];
+                            updated[idx] = { ...plan, price: e.target.value };
+                            setFormPlans(updated);
+                          }}
+                          className="h-8 text-xs border-border/60 flex-1"
+                        />
+                        <Input
+                          placeholder="Interval (day, month...)"
+                          value={plan.interval}
+                          onChange={(e) => {
+                            const updated = [...formPlans];
+                            updated[idx] = {
+                              ...plan,
+                              interval: e.target.value,
+                            };
+                            setFormPlans(updated);
+                          }}
+                          className="h-8 text-xs border-border/60 flex-1"
+                        />
+                      </div>
+                      <Textarea
+                        placeholder="Short description..."
+                        value={plan.description}
+                        onChange={(e) => {
+                          const updated = [...formPlans];
+                          updated[idx] = {
+                            ...plan,
+                            description: e.target.value,
+                          };
+                          setFormPlans(updated);
+                        }}
+                        className="min-h-[40px] resize-none text-xs border-border/60"
+                        maxLength={160}
+                      />
+                      <Input
+                        placeholder="Plan URL (e.g. example.com/pricing)"
+                        value={stripProtocol(plan.url)}
+                        onChange={(e) => {
+                          const updated = [...formPlans];
+                          updated[idx] = { ...plan, url: e.target.value };
+                          setFormPlans(updated);
+                        }}
+                        onBlur={() => {
+                          if (plan.url.trim()) {
+                            const updated = [...formPlans];
+                            updated[idx] = {
+                              ...plan,
+                              url: normalizeUrl(plan.url),
+                            };
+                            setFormPlans(updated);
+                          }
+                        }}
+                        className="h-8 text-xs border-border/60"
+                      />
+                      {/* Features list */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+                          Features
+                        </span>
+                        {plan.features.map((feat, fi) => (
+                          <div
+                            key={fi}
+                            className="flex items-center gap-1.5 group"
+                          >
+                            <span className="text-emerald-500 text-xs shrink-0">
+                              &bull;
+                            </span>
+                            <span className="text-xs text-foreground/70 flex-1">
+                              {feat}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...formPlans];
+                                updated[idx] = {
+                                  ...plan,
+                                  features: plan.features.filter(
+                                    (_, i) => i !== fi,
+                                  ),
+                                };
+                                setFormPlans(updated);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-foreground hover:text-red-500 transition-all"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex gap-1.5">
+                          <Input
+                            placeholder="Add a feature..."
+                            value={expandedPlan === idx ? newFeatureText : ""}
+                            onChange={(e) => setNewFeatureText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && newFeatureText.trim()) {
+                                e.preventDefault();
+                                const updated = [...formPlans];
+                                updated[idx] = {
+                                  ...plan,
+                                  features: [
+                                    ...plan.features,
+                                    newFeatureText.trim(),
+                                  ],
+                                };
+                                setFormPlans(updated);
+                                setNewFeatureText("");
+                              }
+                            }}
+                            className="h-7 text-xs border-border/60 flex-1"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={!newFeatureText.trim()}
+                            onClick={() => {
+                              if (!newFeatureText.trim()) return;
+                              const updated = [...formPlans];
+                              updated[idx] = {
+                                ...plan,
+                                features: [
+                                  ...plan.features,
+                                  newFeatureText.trim(),
+                                ],
+                              };
+                              setFormPlans(updated);
+                              setNewFeatureText("");
+                            }}
+                            className="h-7 px-2 text-xs border-border/60"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add plan button */}
+            <button
+              type="button"
+              onClick={() => {
+                setFormPlans([
+                  ...formPlans,
+                  {
+                    name: "",
+                    price: "",
+                    interval: "",
+                    description: "",
+                    url: "",
+                    features: [],
+                  },
+                ]);
+                setExpandedPlan(formPlans.length);
+                setNewFeatureText("");
+              }}
+              className="h-8 px-3 text-xs font-medium border border-dashed border-border/60 rounded-md hover:bg-muted/50 transition-colors flex items-center gap-1.5 w-full justify-center"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Plan
+            </button>
           </div>
         )}
 

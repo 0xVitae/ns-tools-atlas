@@ -6,6 +6,7 @@ import {
   BarChart3,
   Compass,
   ChevronUp,
+  List,
 } from "lucide-react";
 
 /** Which page is currently active in the footer nav */
@@ -18,6 +19,8 @@ interface FooterProps {
   rightContent?: React.ReactNode;
   /** Optional center content override */
   centerContent?: React.ReactNode;
+  /** Callback to switch to list view */
+  onListView?: () => void;
 }
 
 function HudButton({
@@ -52,6 +55,7 @@ export function Footer({
   activePage = "atlas",
   rightContent,
   centerContent,
+  onListView,
 }: FooterProps) {
   const navigate = useNavigate();
   const [showPanel, setShowPanel] = useState(true);
@@ -85,12 +89,21 @@ export function Footer({
                 <div className="flex items-center justify-between gap-4">
                   {/* Left: Navigation */}
                   <div className="flex items-center gap-1">
-                    <HudButton
-                      icon={<Compass className="w-4 h-4" />}
-                      label="Atlas"
-                      active={activePage === "atlas"}
-                      onClick={() => navigate("/")}
-                    />
+                    <div className="flex items-center gap-1 border border-foreground/15 rounded-lg px-1 py-0.5">
+                      <HudButton
+                        icon={<Compass className="w-4 h-4" />}
+                        label="Atlas"
+                        active={activePage === "atlas"}
+                        onClick={() => navigate("/")}
+                      />
+                      {onListView && (
+                        <HudButton
+                          icon={<List className="w-4 h-4" />}
+                          label="List"
+                          onClick={onListView}
+                        />
+                      )}
+                    </div>
                     <HudButton
                       icon={<Skull className="w-4 h-4" />}
                       label="Graveyard"

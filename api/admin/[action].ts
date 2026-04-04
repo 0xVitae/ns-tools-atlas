@@ -192,6 +192,7 @@ async function handlePending(req: VercelRequest, res: VercelResponse) {
       tags: row.tags?.length ? row.tags : undefined,
       addedAt: row.addedAt ?? undefined,
       locations: row.locations?.length ? row.locations : undefined,
+      plans: row.plans ? JSON.parse(row.plans) : undefined,
       customCategory: row.customCategoryName
         ? { id: row.customCategoryId!, name: row.customCategoryName, color: row.customCategoryColor! }
         : undefined,
