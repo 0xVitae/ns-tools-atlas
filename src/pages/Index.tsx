@@ -62,7 +62,6 @@ import {
 } from "@/components/ui/accordion";
 const mapViewImport = () => import("@/components/ecosystem/MapView");
 const MapView = lazy(mapViewImport);
-const Admin = lazy(() => import("@/pages/Admin"));
 
 type LeftPanelView =
   | { type: "most-popular" }
@@ -93,10 +92,6 @@ const Index = () => {
   const [addingProject, setAddingProject] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.has("admin") || params.has("token");
-  });
   const [leftPanel, setLeftPanel] = useState<LeftPanelView>(null);
   const searchBarRef = useRef<ActionSearchBarRef>(null);
 
@@ -1031,28 +1026,6 @@ const Index = () => {
           window.location.hash = "#list";
         }}
       />
-
-      {/* ======= ADMIN OVERLAY ======= */}
-      {adminOpen && (
-        <div className="fixed inset-0 z-[200]">
-          <Suspense
-            fallback={
-              <div className="fixed inset-0 bg-white flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-              </div>
-            }
-          >
-            <Admin onClose={() => {
-              setAdminOpen(false);
-              // Clean up URL params
-              const url = new URL(window.location.href);
-              url.searchParams.delete("admin");
-              url.searchParams.delete("token");
-              window.history.replaceState({}, "", url.pathname + url.hash);
-            }} />
-          </Suspense>
-        </div>
-      )}
     </div>
   );
 };

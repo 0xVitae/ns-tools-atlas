@@ -625,7 +625,7 @@ function DataTable({
   );
 }
 
-const Admin: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+const Admin: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [password, setPassword] = useState(() => sessionStorage.getItem(ADMIN_PW_KEY) || "");
@@ -711,7 +711,7 @@ const Admin: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
           <Button type="submit" className="w-full" disabled={!passwordInput}>
             {isLoading ? "Checking..." : "Enter"}
           </Button>
-          <Button type="button" variant="ghost" className="w-full text-gray-400" onClick={() => onClose ? onClose() : navigate("/")}>
+          <Button type="button" variant="ghost" className="w-full text-gray-400" onClick={() => navigate("/")}>
             Back to Map
           </Button>
         </form>
@@ -737,7 +737,7 @@ const Admin: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
       {/* Header */}
       <div className="border-b border-gray-100 shrink-0">
         <div className="px-4 h-14 flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => onClose ? onClose() : navigate("/")}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
