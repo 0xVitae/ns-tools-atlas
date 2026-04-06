@@ -2,17 +2,17 @@
 
 Interactive ecosystem visualization of tools and startups in the [Network School](https://ns.com) community. Browse what NS members are building, submit your own project, or request tools you'd like to see.
 
-**Live:** [nstools.xyz](https://nstools.xyz)
+**Live:** [tools.ns.com](https://tools.ns.com)
 
 ## Pages
 
-| Route | Description |
-|---|---|
-| `/` | Main atlas — interactive D3 force-directed canvas (desktop) or card grid (mobile) |
-| `/requests` | Community wishlist — suggest tools and upvote ideas |
-| `/graveyard` | Archive of NS projects that have shut down |
-| `/data` | Charts and stats about the ecosystem |
-| `/docs` | Documentation (Docusaurus) |
+| Route        | Description                                                                       |
+| ------------ | --------------------------------------------------------------------------------- |
+| `/`          | Main atlas — interactive D3 force-directed canvas (desktop) or card grid (mobile) |
+| `/requests`  | Community wishlist — suggest tools and upvote ideas                               |
+| `/graveyard` | Archive of NS projects that have shut down                                        |
+| `/data`      | Charts and stats about the ecosystem                                              |
+| `/docs`      | Documentation (Docusaurus)                                                        |
 
 ## Tech Stack
 
@@ -52,6 +52,7 @@ pnpm db:local
 ```
 
 This starts two Docker containers:
+
 - **Postgres 17** on `localhost:5432` — the actual database
 - **Neon HTTP Proxy** on `localhost:4444` — translates the Neon serverless driver's HTTP calls into standard Postgres queries
 
@@ -80,19 +81,19 @@ pnpm db:seed          # Re-run to reset to fresh mock data
 
 ## All Commands
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Vite dev server (frontend only, port 8080) |
-| `pnpm dev:vercel` | Dev server with Vercel serverless functions |
-| `pnpm build` | Production build (app + docs) |
-| `pnpm lint` | ESLint |
-| `pnpm db:local` | Start local Postgres + Neon proxy |
-| `pnpm db:local:stop` | Stop local database |
-| `pnpm db:push` | Push schema to database |
-| `pnpm db:seed` | Seed mock data (local only) |
-| `pnpm db:studio` | Open Drizzle Studio GUI |
-| `pnpm db:generate` | Generate Drizzle migrations |
-| `pnpm db:migrate` | Run migrations |
+| Command              | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `pnpm dev`           | Vite dev server (frontend only, port 8080)  |
+| `pnpm dev:vercel`    | Dev server with Vercel serverless functions |
+| `pnpm build`         | Production build (app + docs)               |
+| `pnpm lint`          | ESLint                                      |
+| `pnpm db:local`      | Start local Postgres + Neon proxy           |
+| `pnpm db:local:stop` | Stop local database                         |
+| `pnpm db:push`       | Push schema to database                     |
+| `pnpm db:seed`       | Seed mock data (local only)                 |
+| `pnpm db:studio`     | Open Drizzle Studio GUI                     |
+| `pnpm db:generate`   | Generate Drizzle migrations                 |
+| `pnpm db:migrate`    | Run migrations                              |
 
 ## Project Structure
 
@@ -138,7 +139,7 @@ Contributions are welcome. The `main` branch is protected — all changes come t
 - **Claude Plugin** — Add or improve skills in `skills/` that give Claude context about the codebase and NS APIs
 - **Documentation** — Improve the Docusaurus docs at `docs/`
 
-See the [contributing docs](https://nstools.xyz/docs/contributing) for detailed guides on each area.
+See the [contributing docs](https://tools.ns.com/docs/contributing) for detailed guides on each area.
 
 ### Troubleshooting
 
@@ -152,10 +153,10 @@ See the [contributing docs](https://nstools.xyz/docs/contributing) for detailed 
 
 This repo ships a Claude Code plugin with skills for building with NS tools:
 
-| Skill | Command | What it does |
-|---|---|---|
-| **NS Auth** | `/ns-tools:ns-auth` | API reference and integration guide for NS Auth (Discord membership verification) |
-| **Contributing** | `/ns-tools:contributing` | Codebase guide — structure, patterns, conventions, and how to add features |
+| Skill            | Command                  | What it does                                                                      |
+| ---------------- | ------------------------ | --------------------------------------------------------------------------------- |
+| **NS Auth**      | `/ns-tools:ns-auth`      | API reference and integration guide for NS Auth (Discord membership verification) |
+| **Contributing** | `/ns-tools:contributing` | Codebase guide — structure, patterns, conventions, and how to add features        |
 
 ### Install
 
@@ -170,14 +171,14 @@ Or load locally: `claude --plugin-dir /path/to/ns-tools-atlas`
 
 See `.env.example` for all variables. For local dev, the defaults work out of the box. For production:
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes (prod) | Neon PostgreSQL connection string |
-| `USE_LOCAL_DB` | No | Set to `true` for local Docker database |
-| `ADMIN_PASSWORD` | Yes | Password for admin endpoints |
-| `ADMIN_TOKEN` | No | Token for URL-based admin auto-login |
-| `TELEGRAM_BOT_TOKEN` | No | Telegram bot for submission notifications |
-| `TELEGRAM_CHAT_ID` | No | Telegram chat for notifications |
+| Variable             | Required   | Description                               |
+| -------------------- | ---------- | ----------------------------------------- |
+| `DATABASE_URL`       | Yes (prod) | Neon PostgreSQL connection string         |
+| `USE_LOCAL_DB`       | No         | Set to `true` for local Docker database   |
+| `ADMIN_PASSWORD`     | Yes        | Password for admin endpoints              |
+| `ADMIN_TOKEN`        | No         | Token for URL-based admin auto-login      |
+| `TELEGRAM_BOT_TOKEN` | No         | Telegram bot for submission notifications |
+| `TELEGRAM_CHAT_ID`   | No         | Telegram chat for notifications           |
 
 ## Author
 

@@ -3,7 +3,7 @@ import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
 const isDev = process.env.NODE_ENV === "development";
-const siteUrl = isDev ? "http://localhost:3000" : "https://nstools.xyz";
+const siteUrl = isDev ? "http://localhost:3000" : "https://tools.ns.com";
 
 const config: Config = {
   title: "NS Tools Docs",

@@ -368,18 +368,23 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       <div className="p-4 space-y-5 overflow-y-auto flex-1 scrollbar-hide">
         {/* Prerequisite documentation checkbox */}
         <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
-          <input type="checkbox" checked={hasReadDocs} onChange={(e) => setHasReadDocs(e.target.checked)} className="mt-0.5 accent-primary" />
+          <input
+            type="checkbox"
+            checked={hasReadDocs}
+            onChange={(e) => setHasReadDocs(e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
           <span>
-            I have read the{' '}
+            I have read the{" "}
             <a
-              href="https://www.nstools.xyz/docs/submitting-a-project"
+              href="https://www.tools.ns.com/docs/submitting-a-project"
               target="_blank"
               rel="noopener noreferrer"
               className="underline text-primary hover:text-primary/80"
             >
               docs
-            </a>
-            {' '}and applied the prerequisites
+            </a>{" "}
+            and applied the prerequisites
           </span>
         </label>
 
