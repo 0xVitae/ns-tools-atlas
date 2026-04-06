@@ -2,15 +2,22 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { SignJWT, jwtVerify } from 'jose';
 
 function getBaseUrl(req: VercelRequest) {
-  // Use explicit env var if set, otherwise derive from headers
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const rawHost = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
+  const host = rawHost.split(',')[0].trim();
+  const derived = `${proto}://${host}`;
+
+  // In local dev, always use the derived URL so auth redirects stay local
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return derived;
+  }
+
+  // In production, prefer explicit APP_URL if set
   if (process.env.APP_URL) {
     return process.env.APP_URL.replace(/\/$/, '');
   }
-  const proto = req.headers['x-forwarded-proto'] || 'http';
-  // x-forwarded-host can contain multiple comma-separated values; take the first
-  const rawHost = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
-  const host = rawHost.split(',')[0].trim();
-  return `${proto}://${host}`;
+
+  return derived;
 }
 
 function handleDiscord(req: VercelRequest, res: VercelResponse) {

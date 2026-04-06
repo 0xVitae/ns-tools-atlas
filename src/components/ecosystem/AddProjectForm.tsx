@@ -130,6 +130,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [hasReadDocs, setHasReadDocs] = useState(false);
 
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
   const MAX_PRODUCT_IMAGES = 3;
@@ -365,6 +366,23 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
       {/* Scrollable content area */}
       <div className="p-4 space-y-5 overflow-y-auto flex-1 scrollbar-hide">
+        {/* Prerequisite documentation checkbox */}
+        <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={hasReadDocs} onChange={(e) => setHasReadDocs(e.target.checked)} className="mt-0.5 accent-primary" />
+          <span>
+            I have read the{' '}
+            <a
+              href="https://www.nstools.xyz/docs/submitting-a-project"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-primary hover:text-primary/80"
+            >
+              docs
+            </a>
+            {' '}and applied the prerequisites
+          </span>
+        </label>
+
         {/* STEP 1: Visual Identity */}
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -1019,7 +1037,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
               ? "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
               : ""
           }`}
-          disabled={isSubmitting || !allComplete}
+          disabled={isSubmitting || !allComplete || !hasReadDocs}
         >
           {isSubmitting ? (
             <>

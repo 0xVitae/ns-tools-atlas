@@ -1,9 +1,9 @@
 ---
 sidebar_position: 4
-sidebar_label: "Claude Plugin"
+sidebar_label: "Claude Code Plugin"
 ---
 
-# Claude Plugin
+# Claude Code Plugin
 
 NS Tools Atlas ships a **Claude Code plugin** that gives Claude contextual knowledge about Network School APIs and this codebase. Install it to get AI-assisted help when building with NS tools or contributing to the project.
 

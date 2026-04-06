@@ -573,17 +573,13 @@ const Index = () => {
             <div className="ml-auto">
               <button
                 onClick={() => {
-                  const next = viewMode === "map" ? "canvas" : "map";
-                  setViewMode(next);
-                  window.location.hash = next === "canvas" ? "" : `#${next}`;
+                  setAddingProject(true);
+                  setEditingProject(null);
+                  setSelectedProject(null);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-foreground text-background text-[9px] font-bold tracking-[0.15em] uppercase hover:bg-foreground/80 transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-1 rounded bg-foreground text-background text-[9px] font-bold tracking-[0.15em] uppercase hover:bg-foreground/80 transition-colors"
               >
-                {viewMode === "map" ? (
-                  <><LayoutGrid className="w-3 h-3" /> Go to Canvas</>
-                ) : (
-                  <><Globe className="w-3 h-3" /> Go to Map</>
-                )}
+                <Plus className="w-3 h-3" /> Add Project
               </button>
             </div>
           </div>
@@ -1012,13 +1008,16 @@ const Index = () => {
             size="lg"
             className="rounded-full shadow-lg h-14 px-6 gap-2 text-base hidden md:flex"
             onClick={() => {
-              setAddingProject(true);
-              setEditingProject(null);
-              setSelectedProject(null);
+              const next = viewMode === "map" ? "canvas" : "map";
+              setViewMode(next);
+              window.location.hash = next === "canvas" ? "" : `#${next}`;
             }}
           >
-            <Plus className="h-5 w-5" />
-            Add Project
+            {viewMode === "map" ? (
+              <><LayoutGrid className="h-5 w-5" /> Go to Canvas</>
+            ) : (
+              <><Globe className="h-5 w-5" /> Go to Map</>
+            )}
           </Button>
         }
         onListView={() => {

@@ -5,60 +5,51 @@ slug: /contributing
 
 # How to Contribute to NS Tools
 
-The Atlas is open source and welcomes contributions from the Network School community. Whether you're into frontend design, backend features, or developer tooling, there's a place for you.
+NS Tools is built by and for the Network School community. The Atlas is fully open source and there are many ways to get involved — you don't need to be a full-stack engineer to make an impact.
 
-## What you can work on
+## Ways to contribute
 
-### Frontend & UI
+### Submit your project
 
-The Atlas is a React + TypeScript app using TailwindCSS and shadcn/ui. The main canvas is a D3 force simulation, and mobile uses a masonry card layout. If you enjoy building interfaces, there's plenty to improve — from polishing existing components to designing new views.
+The simplest way to contribute is adding your own tool or project to the Atlas. If you're building something useful for the NS community, we want it on the map.
 
-Good starting points: responsive tweaks, animation improvements, accessibility fixes, new filter/sort options on the card grid.
+### Improve the frontend
 
-[Read the Frontend guide →](./frontend.md)
+Love working with UI? The Atlas has an interactive D3 canvas, a mobile card grid, forms, modals, and more. If you see something that could look or work better, go for it.
 
-### New Features & Backend
+[Frontend guide →](./frontend.md)
 
-The backend is Vercel serverless functions backed by Neon PostgreSQL via Drizzle ORM. Each API endpoint is a single file in `api/`. If you want to add a feature end-to-end — from database schema to API endpoint to React Query hook to UI — this is your track.
+### Build new features
 
-Good starting points: new endpoints, data export features, search/filter improvements, analytics views.
+Want to add something end-to-end? Pick an idea — a new filter, a data view, a stats dashboard — and build it from database to UI.
 
-[Read the Features guide →](./features.md)
+[Features guide →](./features.md)
 
-### Claude Plugin & Developer Ecosystem
+### Extend the Claude Code plugin
 
-NS Tools ships a Claude Code plugin with skills that give Claude context about the codebase and NS APIs. If you want to improve the developer experience — adding new skills, improving existing ones, or building integrations — this is the place.
+NS Tools ships a Claude Code plugin that helps developers work with the codebase and NS APIs. You can add new skills, improve existing ones, or document more of the ecosystem.
 
-Good starting points: adding a new skill, improving the contributing skill's coverage, documenting more APIs.
+[Plugin guide →](./plugin.md)
 
-[Read the Plugin guide →](./plugin.md)
+### Improve the docs
 
-### Documentation
+Found a typo? A confusing explanation? A missing guide? Docs contributions are always welcome. These are built with Docusaurus — just edit the markdown.
 
-These docs are built with Docusaurus. Fixing typos, improving explanations, or adding missing guides are all valuable contributions.
+### Design & ideas
 
-Good starting points: any page that confused you when you first read it.
+Not a coder? You can still contribute by opening issues with feature ideas, UX feedback, or bug reports on [GitHub](https://github.com/0xVitae/ns-tools-atlas/issues).
 
 ## Getting started
 
-Before you can work on any of the above, you need to set up your local environment.
-
-[Set up your dev environment →](./setup.md)
-
-## Contribution workflow
-
-The `main` branch is protected — all changes come through pull requests.
-
 1. **Fork** the repo: [0xVitae/ns-tools-atlas](https://github.com/0xVitae/ns-tools-atlas)
-2. **Clone** your fork and create a branch:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/ns-tools-atlas.git
-   cd ns-tools-atlas
-   git checkout -b my-feature
-   ```
-3. **Set up** your local environment ([setup guide](./setup.md))
+2. **Clone** your fork and create a branch
+3. **Set up** your local environment — [dev setup guide →](./setup.md)
 4. **Make your changes**, then push and open a PR against `main`
 
+## Approval process
+
+All contributions go through pull requests. The NS team and the builders behind NS Tools review every PR and have the final say on what gets merged. This keeps the Atlas consistent and ensures quality for the community. Don't let that discourage you — if your contribution is solid and aligned with the project's direction, it'll land.
+
 :::tip First contribution?
-A good first contribution is adding your own project to the Atlas via the UI, or fixing a typo in these docs.
+Start small. Add your project to the Atlas, fix a typo in these docs, or open an issue with an idea. Every contribution counts.
 :::

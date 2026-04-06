@@ -97,8 +97,8 @@ const config: Config = {
               to: "/contributing",
             },
             {
-              label: "Claude Plugin",
-              to: "/claude-plugin",
+              label: "Claude Code Plugin",
+              to: "/claude-code-plugin",
             },
           ],
         },
