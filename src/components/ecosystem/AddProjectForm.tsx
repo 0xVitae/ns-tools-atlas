@@ -197,7 +197,7 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   // Derive whether to actually show errors (auto-clear when all complete)
   const formReady = allComplete && (isEditMode || hasReadDocs);
-  const displayErrors = displayErrors && !formReady;
+  const displayErrors = showValidationErrors && !formReady;
 
   // All steps always visible
   const showStep3 = true;
