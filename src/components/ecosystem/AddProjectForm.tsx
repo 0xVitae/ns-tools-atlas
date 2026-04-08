@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import EmojiPicker from "emoji-picker-react";
 import { EcosystemProject, CustomCategory, Category } from "@/types/ecosystem";
 import {
@@ -131,8 +131,16 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
   // New category creation state
   const [newCategoryName, setNewCategoryName] = useState("");
   const [hasReadDocs, setHasReadDocs] = useState(false);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const docsCheckboxRef = useRef<HTMLLabelElement>(null);
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+  const step4Ref = useRef<HTMLDivElement>(null);
 
   const isCreatingNewCategory = formCategory === CREATE_NEW_CATEGORY;
+
   const MAX_PRODUCT_IMAGES = 3;
 
   // Auto-prepend https:// if user entered a bare domain
@@ -187,6 +195,10 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
   const allComplete = completedSteps.every(Boolean);
 
+  // Derive whether to actually show errors (auto-clear when all complete)
+  const formReady = allComplete && (isEditMode || hasReadDocs);
+  const displayErrors = displayErrors && !formReady;
+
   // All steps always visible
   const showStep3 = true;
   const showStep4 = true;
@@ -238,6 +250,24 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       color: getColorForNewCategory(name),
     };
   }, [isCreatingNewCategory, newCategoryName]);
+
+  const scrollToFirstError = useCallback(() => {
+    setShowValidationErrors(true);
+    // Find the first incomplete element and scroll to it
+    const checks: [boolean, React.RefObject<HTMLElement>][] = [
+      [!isEditMode && !hasReadDocs, docsCheckboxRef],
+      [!completedSteps[0], step1Ref], // Visual identity
+      [!completedSteps[1] || !completedSteps[2], step2Ref], // Name + URLs
+      [!completedSteps[3], step3Ref], // Category
+      [!completedSteps[4], step4Ref], // Description
+    ];
+    for (const [isIncomplete, ref] of checks) {
+      if (isIncomplete && ref.current && scrollContainerRef.current) {
+        ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+  }, [isEditMode, hasReadDocs, completedSteps]);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -365,31 +395,41 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
       </div>
 
       {/* Scrollable content area */}
-      <div className="p-4 space-y-5 overflow-y-auto flex-1 scrollbar-hide">
-        {/* Prerequisite documentation checkbox */}
-        <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hasReadDocs}
-            onChange={(e) => setHasReadDocs(e.target.checked)}
-            className="mt-0.5 accent-primary"
-          />
-          <span>
-            I have read the{" "}
-            <a
-              href="https://www.tools.ns.com/docs/submitting-a-project"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary hover:text-primary/80"
-            >
-              docs
-            </a>{" "}
-            and applied the prerequisites
-          </span>
-        </label>
+      <div ref={scrollContainerRef} className="p-4 space-y-5 overflow-y-auto flex-1 scrollbar-hide">
+        {/* Prerequisite documentation checkbox — only for new projects */}
+        {!isEditMode && (
+          <label
+            ref={docsCheckboxRef}
+            className={`flex items-start gap-2 text-xs cursor-pointer rounded-md px-2 py-1.5 -mx-2 transition-all duration-300 ${
+              displayErrors && !hasReadDocs
+                ? "text-red-400 ring-1 ring-red-400/50 bg-red-400/5"
+                : "text-muted-foreground"
+            }`}>
+            <input
+              type="checkbox"
+              checked={hasReadDocs}
+              onChange={(e) => setHasReadDocs(e.target.checked)}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              I have read the{" "}
+              <a
+                href="https://www.tools.ns.com/docs/submitting-a-project"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-primary hover:text-primary/80"
+              >
+                docs
+              </a>{" "}
+              and applied the prerequisites
+            </span>
+          </label>
+        )}
 
         {/* STEP 1: Visual Identity */}
-        <div className="space-y-2">
+        <div ref={step1Ref} className={`space-y-2 rounded-md px-2 py-1.5 -mx-2 transition-all duration-300 ${
+          displayErrors && !completedSteps[0] ? "ring-1 ring-red-400/50 bg-red-400/5" : ""
+        }`}>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             1. Visual Identity
           </label>
@@ -457,7 +497,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
         </div>
 
         {/* STEP 2: Basic Info */}
-        <div className="space-y-2">
+        <div ref={step2Ref} className={`space-y-2 rounded-md px-2 py-1.5 -mx-2 transition-all duration-300 ${
+          showValidationErrors && (!completedSteps[1] || !completedSteps[2]) ? "ring-1 ring-red-400/50 bg-red-400/5" : ""
+        }`}>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             2. Basic Info
           </label>
@@ -674,7 +716,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 3: Classification */}
         {showStep3 && (
-          <div className="space-y-2">
+          <div ref={step3Ref} className={`space-y-2 rounded-md px-2 py-1.5 -mx-2 transition-all duration-300 ${
+            displayErrors && !completedSteps[3] ? "ring-1 ring-red-400/50 bg-red-400/5" : ""
+          }`}>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               3. Classification
             </label>
@@ -738,7 +782,9 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* STEP 4: Description */}
         {showStep4 && (
-          <div className="space-y-2">
+          <div ref={step4Ref} className={`space-y-2 rounded-md px-2 py-1.5 -mx-2 transition-all duration-300 ${
+            displayErrors && !completedSteps[4] ? "ring-1 ring-red-400/50 bg-red-400/5" : ""
+          }`}>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               4. Description
             </label>
@@ -1036,13 +1082,20 @@ export const AddProjectForm: React.FC<AddProjectFormProps> = ({
 
         {/* Submit Button */}
         <Button
-          onClick={handleSubmit}
+          onClick={() => {
+            const formReady = allComplete && (isEditMode || hasReadDocs);
+            if (!formReady) {
+              scrollToFirstError();
+              return;
+            }
+            handleSubmit();
+          }}
           className={`w-full h-10 text-sm font-medium transition-all duration-300 ${
-            allComplete
+            allComplete && (isEditMode || hasReadDocs)
               ? "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
               : ""
           }`}
-          disabled={isSubmitting || !allComplete || !hasReadDocs}
+          disabled={isSubmitting}
         >
           {isSubmitting ? (
             <>
