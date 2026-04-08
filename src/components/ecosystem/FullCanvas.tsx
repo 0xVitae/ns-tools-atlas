@@ -262,6 +262,20 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
     checkTouchDevice();
   }, []);
 
+  // Preload product images and logos into browser cache so they appear
+  // instantly when the HoverCard opens (portaled content loads lazily).
+  useEffect(() => {
+    const urls: string[] = [];
+    for (const p of projects) {
+      if (p.imageUrl) urls.push(p.imageUrl);
+      if (p.productImages) urls.push(...p.productImages);
+    }
+    urls.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, [projects]);
+
   // Build dynamic categories from projects data
   const categories = useMemo(() => {
     return buildCategoriesFromProjects(projects);
