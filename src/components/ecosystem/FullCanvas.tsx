@@ -76,8 +76,7 @@ const ProductImageCarousel: React.FC<{
           alt={`${projectName} screenshot ${currentIndex + 1}`}
           className="w-full h-full object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).src =
-              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='60' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21,15 16,10 5,21'/%3E%3C/svg%3E";
+            (e.target as HTMLImageElement).style.display = "none";
           }}
         />
       </div>
@@ -264,16 +263,19 @@ export const FullCanvas: React.FC<FullCanvasProps> = ({
 
   // Preload product images and logos into browser cache so they appear
   // instantly when the HoverCard opens (portaled content loads lazily).
+  // Preload images into browser cache; keep references alive until loaded
+  // so they don't get garbage-collected mid-download.
   useEffect(() => {
-    const urls: string[] = [];
+    const imageRefs: HTMLImageElement[] = [];
     for (const p of projects) {
-      if (p.imageUrl) urls.push(p.imageUrl);
-      if (p.productImages) urls.push(...p.productImages);
+      if (p.imageUrl) imageRefs.push(Object.assign(new Image(), { src: p.imageUrl }));
+      if (p.productImages) {
+        for (const src of p.productImages) {
+          imageRefs.push(Object.assign(new Image(), { src }));
+        }
+      }
     }
-    urls.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
+    return () => { imageRefs.length = 0; };
   }, [projects]);
 
   // Build dynamic categories from projects data

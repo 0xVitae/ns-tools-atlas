@@ -22,6 +22,7 @@ import {
 import { editProject } from "@/lib/api";
 import { AddProjectForm } from "@/components/ecosystem/AddProjectForm";
 import { Footer } from "@/components/Footer";
+import { SupportChat } from "@/components/SupportChat";
 import ActionSearchBar, {
   Action,
   ActionSearchBarRef,
@@ -992,6 +993,7 @@ const Index = () => {
             </span>
             <HelpCircle className="w-5 h-5" />
           </button>
+          <SupportChat />
         </div>
       </div>
 
@@ -1239,14 +1241,17 @@ function ProjectDetailPanel({
             {/* Product Images */}
             {project.productImages && project.productImages.length > 0 && (
               <DetailSection label="MEDIA">
-                <div className="space-y-2">
+                <div className="space-y-2" data-media-container>
                   <div className="rounded-lg overflow-hidden border border-foreground/10 bg-muted/20 aspect-[4/3]">
                     <img
                       src={project.productImages[imageIndex]}
                       alt={`${project.name} screenshot ${imageIndex + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                        const img = e.target as HTMLImageElement;
+                        // Hide the entire media container when image fails
+                        const container = img.closest('[data-media-container]');
+                        if (container) (container as HTMLElement).style.display = "none";
                       }}
                     />
                   </div>
