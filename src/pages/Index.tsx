@@ -812,6 +812,11 @@ const Index = () => {
           <ProjectDetailPanel
             project={selectedProject}
             onClose={() => setSelectedProject(null)}
+            isOwned={ownedProjectIds.has(selectedProject.id)}
+            onEdit={() => {
+              setEditingProject(selectedProject);
+              setSelectedProject(null);
+            }}
           />
         )}
       </div>
@@ -1082,9 +1087,13 @@ function Panel({
 function ProjectDetailPanel({
   project,
   onClose,
+  isOwned,
+  onEdit,
 }: {
   project: EcosystemProject;
   onClose: () => void;
+  isOwned?: boolean;
+  onEdit?: () => void;
 }) {
   const [imageIndex, setImageIndex] = useState(0);
   const categoryColor = getCategoryColor(project.category);
@@ -1114,7 +1123,16 @@ function ProjectDetailPanel({
             className="px-4 py-3 border-b border-foreground/10"
             style={{ backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)` }}
           >
-            <div className="flex justify-end">
+            <div className="flex justify-between">
+              {isOwned && onEdit ? (
+                <button
+                  onClick={onEdit}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  title="Edit project"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              ) : <div />}
               <button
                 onClick={onClose}
                 className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
